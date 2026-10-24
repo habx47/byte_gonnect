@@ -4,40 +4,46 @@ import (
 	"bufio"
 	"log"
 	"net"
+	"os"
 )
 
+type Logger interface {
+	Printf(format string, v ...any)
+}
+
 func Listener() {
+	logger := log.New(os.Stderr, "[SERVER] ", log.LstdFlags|log.Lshortfile)
 	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 	defer listener.Close()
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Printf("failed to accept a connection: %v", err)
+			logger.Printf("failed to accept a connection: %v", err)
 			continue
 		}
 
-		go handleConn(conn)
+		go handleConn(conn, logger)
 	}
 }
 
-func handleConn(conn net.Conn) {
+func handleConn(conn net.Conn, logger Logger) {
 	defer conn.Close()
 
 	reader := bufio.NewReader(conn)
 	for {
-		message, err := reader.ReadBytes('\n')
-		if err != nil {
-			log.Printf("client disconnected on err: %v", err)
+		message, connReadErr := reader.ReadBytes('\n')
+		if connReadErr != nil {
+			logger.Printf("client disconnected or error: %v", connReadErr)
 			return
 		}
 
 		_, connWriteErr := conn.Write(message)
 		if connWriteErr != nil {
-			log.Printf("failed to write to client: %v", connWriteErr)
+			logger.Printf("failed to write to client: %v", connWriteErr)
 			return
 		}
 	}
