@@ -21,6 +21,20 @@ func (r *ReadErrConn) Read(b []byte) (int, error) {
 	return r.errReader.Read(b)
 }
 
+var ServerWriteErr = "server write error"
+
+type WriteErrConn struct {
+	net.Conn
+	faultyWrite bool
+}
+
+func (w *WriteErrConn) Write(b []byte) (n int, err error) {
+	if w.faultyWrite {
+		return 0, errors.New(ServerWriteErr)
+	}
+	return w.Conn.Write(b)
+}
+
 func TestHandleConn(t *testing.T) {
 	t.Run("success on read & write", func(t *testing.T) {
 		inputMessage := "hello, world!\n"
@@ -72,6 +86,44 @@ func TestHandleConn(t *testing.T) {
 
 		if !strings.Contains(got, customErr.Error()) {
 			t.Errorf("expected log to contain %q, but got: \n%s", customErr.Error(), got)
+		}
+	})
+
+	t.Run("error on conn write", func(t *testing.T) {
+		serverSide, clientSide := net.Pipe()
+		defer clientSide.Close()
+		faultyConn := &WriteErrConn{
+			Conn:        serverSide,
+			faultyWrite: false,
+		}
+
+		var logBuffer bytes.Buffer
+		logger := log.New(&logBuffer, "", 0)
+
+		done := make(chan struct{})
+
+		go func() {
+			handleConn(faultyConn, logger)
+			close(done)
+		}()
+
+		faultyConn.faultyWrite = true
+
+		_, err := clientSide.Write([]byte("hello, world!\n"))
+		if err != nil {
+			t.Fatalf("failed to write to server: %v", err)
+		}
+
+		<-done
+
+		got := logBuffer.String()
+
+		if !strings.Contains(got, "failed to write to client") {
+			t.Errorf("expected connWriteErr branch to execute, but got: \n%s", got)
+		}
+
+		if !strings.Contains(got, ServerWriteErr) {
+			t.Errorf("expected log to contain %q, but got: \n%s", ServerWriteErr, got)
 		}
 	})
 }
