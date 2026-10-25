@@ -1,7 +1,14 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/habx47/byte_gonnect/listener"
+)
 
 func main() {
-	fmt.Println("Hello, from byte_gonnect!")
+	port := "8080"
+	fmt.Println("Welcome to byte_gonnect")
+	fmt.Printf("Listening on port: %s\n", port)
+	listener.Listener(port)
 }

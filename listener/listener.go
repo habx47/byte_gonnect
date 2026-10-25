@@ -11,9 +11,9 @@ type Logger interface {
 	Printf(format string, v ...any)
 }
 
-func Listener() {
+func Listener(port string) {
 	logger := log.New(os.Stderr, "[SERVER] ", log.LstdFlags|log.Lshortfile)
-	listener, err := net.Listen("tcp", ":8080")
+	listener, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		logger.Fatal(err)
 	}
