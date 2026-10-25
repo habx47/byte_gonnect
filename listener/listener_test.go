@@ -103,11 +103,10 @@ func TestHandleConn(t *testing.T) {
 		done := make(chan struct{})
 
 		go func() {
+			faultyConn.faultyWrite = true
 			handleConn(faultyConn, logger)
 			close(done)
 		}()
-
-		faultyConn.faultyWrite = true
 
 		_, err := clientSide.Write([]byte("hello, world!\n"))
 		if err != nil {
