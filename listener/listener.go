@@ -43,8 +43,8 @@ func Listener(port string) {
 func handleConn(conn net.Conn, logger Logger) {
 	defer conn.Close()
 	state := stateRequestLine
+	responseStr := "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello, Client"
 	reqMetadata := parser.ReqMetadata{}
-	responseStr := "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: \r\n\r\nHello, Client"
 
 	reader := bufio.NewReader(conn)
 	for {
@@ -62,21 +62,15 @@ func handleConn(conn net.Conn, logger Logger) {
 
 		switch state {
 		case stateRequestLine:
-			parser.ParseRequestLine(line, reqMetadata)
+			reqMetadata.ParseRequestLine(line)
 			state = stateHeaders
 		case stateHeaders:
-			parser.ParseHeaders(line, reqMetadata)
+			reqMetadata.ParseHeaders(line)
 		}
 	}
 
-	contentLength, err := strconv.Atoi(reqMetadata["Content-Length"])
-	if err != nil {
-		logger.Printf("error parsing the Content-Length request header: %v", err)
-		return
-	}
-
-	if contentLength > 0 {
-		body := make([]byte, contentLength)
+	if reqMetadata.ContentLength > 0 {
+		body := make([]byte, reqMetadata.ContentLength)
 		if _, err := io.ReadFull(reader, body); err != nil {
 			logger.Printf("failed to read request body: %v", err)
 			return
