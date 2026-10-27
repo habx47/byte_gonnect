@@ -37,7 +37,7 @@ func (r *ReqMetadata) ParseHeaders(line []byte) error {
 		if bytes.EqualFold(key, []byte("Content-Length")) {
 			contentLength, err := strconv.Atoi(string(value))
 			if err != nil {
-				return fmt.Errorf("%w: %v", ContentLengthErr, err)
+				return fmt.Errorf("%w: %w: %v", MalformedReqErr, ContentLengthErr, err)
 			}
 			r.ContentLength = contentLength
 		}

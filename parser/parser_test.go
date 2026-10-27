@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -10,25 +11,25 @@ func TestRequestLine(t *testing.T) {
 		var stubMetadata ReqMetadata
 		line := []byte("GET / HTTP/1.1")
 		tests := []struct {
-			feildName string
+			fieldName string
 			assertion func() bool
 			got       string
 			want      string
 		}{
 			{
-				feildName: "Method",
+				fieldName: "Method",
 				assertion: func() bool { return stubMetadata.Method == "GET" },
 				got:       stubMetadata.Method,
 				want:      "GET",
 			},
 			{
-				feildName: "Path",
+				fieldName: "Path",
 				assertion: func() bool { return stubMetadata.Path == "/" },
 				got:       stubMetadata.Path,
 				want:      "/",
 			},
 			{
-				feildName: "Version",
+				fieldName: "Version",
 				assertion: func() bool { return stubMetadata.Version == "HTTP/1.1" },
 				got:       stubMetadata.Version,
 				want:      "HTTP/1.1",
@@ -43,7 +44,7 @@ func TestRequestLine(t *testing.T) {
 
 		for _, tt := range tests {
 			if !tt.assertion() {
-				t.Errorf("got %v, expected %v", tt.got, tt.want)
+				t.Errorf("got %v, expected %v value for field %v", tt.got, tt.want, tt.fieldName)
 			}
 		}
 	})
@@ -67,25 +68,25 @@ func TestRequestLine(t *testing.T) {
 		var stubMetadata ReqMetadata
 		line := []byte("GET        /       HTTP/1.1")
 		tests := []struct {
-			feildName string
+			fieldName string
 			assertion func() bool
 			got       string
 			want      string
 		}{
 			{
-				feildName: "Method",
+				fieldName: "Method",
 				assertion: func() bool { return stubMetadata.Method == "GET" },
 				got:       stubMetadata.Method,
 				want:      "GET",
 			},
 			{
-				feildName: "Path",
+				fieldName: "Path",
 				assertion: func() bool { return stubMetadata.Path == "/" },
 				got:       stubMetadata.Path,
 				want:      "/",
 			},
 			{
-				feildName: "Version",
+				fieldName: "Version",
 				assertion: func() bool { return stubMetadata.Version == "HTTP/1.1" },
 				got:       stubMetadata.Version,
 				want:      "HTTP/1.1",
@@ -96,20 +97,40 @@ func TestRequestLine(t *testing.T) {
 
 		for _, tt := range tests {
 			if !tt.assertion() {
-				t.Errorf("got %v, expected %v", tt.got, tt.want)
+				t.Errorf("got %v, expected %v for field %v", tt.got, tt.want, tt.fieldName)
 			}
 		}
 	})
 }
 
 func TestParseHeaders(t *testing.T) {
-	var stubMetadata ReqMetadata
-	line := []byte("Content-Length: 10")
-	stubMetadata.ParseHeaders(line)
+	t.Run("valid field", func(t *testing.T) {
+		var stubMetadata ReqMetadata
 
-	got := stubMetadata.ContentLength
-	want := 10
-	if got != want {
-		t.Errorf("got %v, want %v", got, want)
-	}
+		line := []byte("Content-Length: 10")
+		err := stubMetadata.ParseHeaders(line)
+		if err != nil {
+			t.Fatalf("expected no error but got: %v", err)
+		}
+
+		got := stubMetadata.ContentLength
+		want := 10
+		if got != want {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	t.Run("invalid field", func(t *testing.T) {
+		var stubMetadata ReqMetadata
+		line := []byte("Content-Length: abc")
+
+		err := stubMetadata.ParseHeaders(line)
+		if err == nil {
+			t.Fatalf("expected error: %v, but got nil", ContentLengthErr)
+		}
+
+		if !errors.Is(err, ContentLengthErr) {
+			t.Errorf("got %v, want %v", err, ContentLengthErr)
+		}
+	})
 }

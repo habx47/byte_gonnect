@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"strconv"
 
 	"github.com/habx47/byte_gonnect/parser"
 )
@@ -62,10 +61,16 @@ func handleConn(conn net.Conn, logger Logger) {
 
 		switch state {
 		case stateRequestLine:
-			reqMetadata.ParseRequestLine(line)
+			err := reqMetadata.ParseRequestLine(line)
+			if err != nil {
+				logger.Printf("failed to parse request: %v", err)
+				return
+			}
 			state = stateHeaders
 		case stateHeaders:
-			reqMetadata.ParseHeaders(line)
+			err := reqMetadata.ParseHeaders(line)
+			logger.Printf("failed to parse request: %v", err)
+			return
 		}
 	}
 
