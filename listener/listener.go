@@ -41,6 +41,7 @@ func Listener(port string) {
 func handleConn(conn net.Conn, logger Logger) {
 	defer conn.Close()
 	state := stateRequestLine
+	reqMetadata := parser.ReqMetadata{}
 
 	reader := bufio.NewReader(conn)
 	for {
@@ -58,7 +59,7 @@ func handleConn(conn net.Conn, logger Logger) {
 
 		switch state {
 		case stateRequestLine:
-			parser.ParseRequestLine(line)
+			parser.ParseRequestLine(line, reqMetadata)
 		case stateHeader:
 			parser.ParseHeaders(line)
 		}
