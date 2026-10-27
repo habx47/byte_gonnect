@@ -22,5 +22,12 @@ func ParseRequestLine(line []byte, metadata ReqMetadata) error {
 	return nil
 }
 
-func ParseHeaders(line []byte) {
+func ParseHeaders(line []byte, metadata ReqMetadata) {
+	if key, value, found := bytes.Cut(line, []byte(":")); found {
+		key = bytes.TrimSpace(key)
+		value = bytes.TrimSpace(value)
+		if bytes.EqualFold(key, []byte("Content-Length")) {
+			metadata["Content-Length"] = string(value)
+		}
+	}
 }

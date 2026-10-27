@@ -16,7 +16,7 @@ type Logger interface {
 
 const (
 	stateRequestLine int = iota
-	stateHeader
+	stateHeaders
 )
 
 func Listener(port string) {
@@ -53,15 +53,16 @@ func handleConn(conn net.Conn, logger Logger) {
 
 		line = bytes.TrimRight(line, "\r\n")
 
-		if state == stateHeader && len(line) == 0 {
+		if state == stateHeaders && len(line) == 0 {
 			break
 		}
 
 		switch state {
 		case stateRequestLine:
 			parser.ParseRequestLine(line, reqMetadata)
-		case stateHeader:
-			parser.ParseHeaders(line)
+			state = stateHeaders
+		case stateHeaders:
+			parser.ParseHeaders(line, reqMetadata)
 		}
 	}
 

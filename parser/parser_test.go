@@ -65,3 +65,19 @@ func TestRequestLine(t *testing.T) {
 		}
 	})
 }
+
+func TestParseHeaders(t *testing.T) {
+	key := "Content-Length"
+	value := "10"
+	line := []byte(key + ": " + value)
+	ParseHeaders(line, StubMetadata)
+
+	got, ok := StubMetadata[key]
+	if !ok {
+		t.Fatalf("expected key %v, but didn't find any", key)
+	}
+
+	if got != value {
+		t.Errorf("got %v, want %v", got, value)
+	}
+}
