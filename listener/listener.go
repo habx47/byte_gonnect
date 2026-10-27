@@ -3,9 +3,11 @@ package listener
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"log"
 	"net"
 	"os"
+	"strconv"
 
 	"github.com/habx47/byte_gonnect/parser"
 )
@@ -42,6 +44,7 @@ func handleConn(conn net.Conn, logger Logger) {
 	defer conn.Close()
 	state := stateRequestLine
 	reqMetadata := parser.ReqMetadata{}
+	responseStr := "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: \r\n\r\nHello, Client"
 
 	reader := bufio.NewReader(conn)
 	for {
@@ -66,12 +69,24 @@ func handleConn(conn net.Conn, logger Logger) {
 		}
 	}
 
-	/*
-	   _, connWriteErr := conn.Write(line)
+	contentLength, err := strconv.Atoi(reqMetadata["Content-Length"])
+	if err != nil {
+		logger.Printf("error parsing the Content-Length request header: %v", err)
+		return
+	}
 
-	   	if connWriteErr != nil {
-	   		logger.Printf("failed to write to client: %v", connWriteErr)
-	   		return
-	   	}
-	*/
+	if contentLength > 0 {
+		body := make([]byte, contentLength)
+		if _, err := io.ReadFull(reader, body); err != nil {
+			logger.Printf("failed to read request body: %v", err)
+			return
+		}
+	}
+
+	_, connWriteErr := conn.Write([]byte(responseStr))
+
+	if connWriteErr != nil {
+		logger.Printf("failed to write to client: %v", connWriteErr)
+		return
+	}
 }
