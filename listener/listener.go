@@ -2,14 +2,22 @@ package listener
 
 import (
 	"bufio"
+	"bytes"
 	"log"
 	"net"
 	"os"
+
+	"github.com/habx47/byte_gonnect/parser"
 )
 
 type Logger interface {
 	Printf(format string, v ...any)
 }
+
+const (
+	stateRequestLine int = iota
+	stateHeader
+)
 
 func Listener(port string) {
 	logger := log.New(os.Stderr, "[SERVER] ", log.LstdFlags|log.Lshortfile)
@@ -32,19 +40,36 @@ func Listener(port string) {
 
 func handleConn(conn net.Conn, logger Logger) {
 	defer conn.Close()
+	state := stateRequestLine
 
 	reader := bufio.NewReader(conn)
 	for {
-		message, connReadErr := reader.ReadBytes('\n')
+		line, connReadErr := reader.ReadBytes('\n')
 		if connReadErr != nil {
 			logger.Printf("client disconnected or error: %v", connReadErr)
 			return
 		}
 
-		_, connWriteErr := conn.Write(message)
-		if connWriteErr != nil {
-			logger.Printf("failed to write to client: %v", connWriteErr)
-			return
+		line = bytes.TrimRight(line, "\r\n")
+
+		if state == stateHeader && len(line) == 0 {
+			break
+		}
+
+		switch state {
+		case stateRequestLine:
+			parser.ParseRequestLine(line)
+		case stateHeader:
+			parser.ParseHeaders(line)
 		}
 	}
+
+	/*
+	   _, connWriteErr := conn.Write(line)
+
+	   	if connWriteErr != nil {
+	   		logger.Printf("failed to write to client: %v", connWriteErr)
+	   		return
+	   	}
+	*/
 }
