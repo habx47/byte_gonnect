@@ -55,26 +55,30 @@ func handleConn(conn net.Conn, logger Logger) {
 			return
 		}
 
-		if isPrefix {
-			conn.Write([]byte("HTTP/1.1 431 Request Header Fields Too Large\r\n\r\n"))
-			logger.Printf("%v: request line size more than allowed", parser.MalformedReqErr)
-			return
-		}
-
 		if state == stateHeaders && len(line) == 0 {
 			break
 		}
 
 		switch state {
 		case stateRequestLine:
-			reqLineErr := reqMetadata.ParseRequestLine(line)
+			reqLineErr := reqMetadata.ParseRequestLine(line, isPrefix)
+			if errors.Is(reqLineErr, parser.URIErr) {
+				conn.Write([]byte("HTTP/1.1 414 URI too long\r\n\r\n"))
+				logger.Printf("%v", parser.URIErr)
+				return
+			}
 			if reqLineErr != nil {
 				logger.Printf("failed to parse request: %v", reqLineErr)
 				return
 			}
 			state = stateHeaders
 		case stateHeaders:
-			parseHeadersErr := reqMetadata.ParseHeaders(line)
+			parseHeadersErr := reqMetadata.ParseHeaders(line, isPrefix)
+			if errors.Is(parseHeadersErr, parseHeadersErr) {
+				conn.Write([]byte("HTTP/1.1 431 Request Header Fields Too Large\r\n\r\n"))
+				logger.Printf("%v", parser.HeaderErr)
+				return
+			}
 			if parseHeadersErr != nil {
 				logger.Printf("failed to parse request: %v", parseHeadersErr)
 				return
@@ -88,17 +92,10 @@ func handleConn(conn net.Conn, logger Logger) {
 		return
 	}
 
-	limitedReader := io.LimitReader(reader, MaxRequestBodySize+1)
-
 	body := make([]byte, reqMetadata.ContentLength.Value)
-	_, err := io.ReadFull(limitedReader, body)
-	if err != nil {
-		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-			conn.Write([]byte("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"))
-			return
-		}
-
-		conn.Write([]byte("HTTP/1.1 413 Payload Too Large\r\nConnection: close\r\n\r\n"))
+	_, err := io.ReadFull(reader, body)
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		conn.Write([]byte("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"))
 		return
 	}
 
