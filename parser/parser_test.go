@@ -113,7 +113,7 @@ func TestParseHeaders(t *testing.T) {
 			t.Fatalf("expected no error but got: %v", err)
 		}
 
-		got := stubMetadata.ContentLength
+		got := stubMetadata.ContentLength.Value
 		want := 10
 		if got != want {
 			t.Errorf("got %v, want %v", got, want)

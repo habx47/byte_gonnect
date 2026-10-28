@@ -11,7 +11,10 @@ type ReqMetadata struct {
 	Method        string
 	Path          string
 	Version       string
-	ContentLength int
+	ContentLength struct {
+		isSet bool
+		Value int
+	}
 }
 
 var MalformedReqErr = errors.New("malformed request")
@@ -30,16 +33,28 @@ func (r *ReqMetadata) ParseRequestLine(line []byte) error {
 }
 
 func (r *ReqMetadata) ParseHeaders(line []byte) error {
-	if key, value, found := bytes.Cut(line, []byte(":")); found {
+	key, value, found := bytes.Cut(line, []byte(":"))
+
+	if !found {
+		return fmt.Errorf("%w: %w", MalformedReqErr, ContentLengthErr)
+	}
+
+	if found {
 		key = bytes.TrimSpace(key)
 		value = bytes.TrimSpace(value)
+	}
 
-		if bytes.EqualFold(key, []byte("Content-Length")) {
+	if bytes.EqualFold(key, []byte("Content-Length")) {
+		if !r.ContentLength.isSet {
 			contentLength, err := strconv.Atoi(string(value))
 			if err != nil {
 				return fmt.Errorf("%w: %w: %v", MalformedReqErr, ContentLengthErr, err)
 			}
-			r.ContentLength = contentLength
+			if contentLength < 0 {
+				return fmt.Errorf("%w: %w: %v", MalformedReqErr, ContentLengthErr, err)
+			}
+			r.ContentLength.Value = contentLength
+			r.ContentLength.isSet = true
 		}
 	}
 	return nil

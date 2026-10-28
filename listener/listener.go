@@ -76,8 +76,8 @@ func handleConn(conn net.Conn, logger Logger) {
 		}
 	}
 
-	if reqMetadata.ContentLength > 0 {
-		body := make([]byte, reqMetadata.ContentLength)
+	if reqMetadata.ContentLength.Value > 0 {
+		body := make([]byte, reqMetadata.ContentLength.Value)
 		if _, err := io.ReadFull(reader, body); err != nil {
 			logger.Printf("failed to read request body: %v", err)
 			return
