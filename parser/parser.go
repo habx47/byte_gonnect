@@ -13,7 +13,7 @@ type ReqMetadata struct {
 	Version       string
 	ContentLength struct {
 		isSet bool
-		Value int
+		Value uint64
 	}
 }
 
@@ -46,11 +46,8 @@ func (r *ReqMetadata) ParseHeaders(line []byte) error {
 
 	if bytes.EqualFold(key, []byte("Content-Length")) {
 		if !r.ContentLength.isSet {
-			contentLength, err := strconv.Atoi(string(value))
+			contentLength, err := strconv.ParseUint(string(value), 10, 64)
 			if err != nil {
-				return fmt.Errorf("%w: %w: %v", MalformedReqErr, ContentLengthErr, err)
-			}
-			if contentLength < 0 {
 				return fmt.Errorf("%w: %w: %v", MalformedReqErr, ContentLengthErr, err)
 			}
 			r.ContentLength.Value = contentLength

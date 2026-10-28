@@ -114,7 +114,7 @@ func TestParseHeaders(t *testing.T) {
 		}
 
 		got := stubMetadata.ContentLength.Value
-		want := 10
+		want := uint64(10)
 		if got != want {
 			t.Errorf("got %v, want %v", got, want)
 		}

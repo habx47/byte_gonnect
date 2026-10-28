@@ -59,7 +59,7 @@ func TestHandleConn(t *testing.T) {
 			t.Fatalf("failed to read response from server: %v", err)
 		}
 
-		expectedResponse := []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello, Client")
+		expectedResponse := []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\nConnection: close\r\n\r\nHello, Client")
 
 		if !bytes.Equal(response, expectedResponse) {
 			t.Errorf("got %s, want %s", response, expectedResponse)

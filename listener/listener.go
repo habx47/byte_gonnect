@@ -2,7 +2,7 @@ package listener
 
 import (
 	"bufio"
-	"bytes"
+	"errors"
 	"io"
 	"log"
 	"net"
@@ -19,6 +19,8 @@ const (
 	stateRequestLine int = iota
 	stateHeaders
 )
+
+const MaxRequestBodySize = 10000
 
 func Listener(port string) {
 	logger := log.New(os.Stderr, "[SERVER] ", log.LstdFlags|log.Lshortfile)
@@ -42,18 +44,22 @@ func Listener(port string) {
 func handleConn(conn net.Conn, logger Logger) {
 	defer conn.Close()
 	state := stateRequestLine
-	responseStr := "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello, Client"
+	responseStr := "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\nConnection: close\r\n\r\nHello, Client"
 	reqMetadata := parser.ReqMetadata{}
 
-	reader := bufio.NewReader(conn)
+	reader := bufio.NewReaderSize(conn, 8192)
 	for {
-		line, connReadErr := reader.ReadBytes('\n')
+		line, isPrefix, connReadErr := reader.ReadLine()
 		if connReadErr != nil {
 			logger.Printf("client disconnected or error: %v", connReadErr)
 			return
 		}
 
-		line = bytes.TrimRight(line, "\r\n")
+		if isPrefix {
+			conn.Write([]byte("HTTP/1.1 431 Request Header Fields Too Large\r\n\r\n"))
+			logger.Printf("%v: request line size more than allowed", parser.MalformedReqErr)
+			return
+		}
 
 		if state == stateHeaders && len(line) == 0 {
 			break
@@ -76,12 +82,24 @@ func handleConn(conn net.Conn, logger Logger) {
 		}
 	}
 
-	if reqMetadata.ContentLength.Value > 0 {
-		body := make([]byte, reqMetadata.ContentLength.Value)
-		if _, err := io.ReadFull(reader, body); err != nil {
-			logger.Printf("failed to read request body: %v", err)
+	if reqMetadata.ContentLength.Value > MaxRequestBodySize {
+		conn.Write([]byte("HTTP/1.1 413 Payload Too Large\r\nConnection: close\r\n\r\n"))
+		logger.Printf("%v: request body size more than allowed", parser.MalformedReqErr)
+		return
+	}
+
+	limitedReader := io.LimitReader(reader, MaxRequestBodySize+1)
+
+	body := make([]byte, reqMetadata.ContentLength.Value)
+	_, err := io.ReadFull(limitedReader, body)
+	if err != nil {
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+			conn.Write([]byte("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"))
 			return
 		}
+
+		conn.Write([]byte("HTTP/1.1 413 Payload Too Large\r\nConnection: close\r\n\r\n"))
+		return
 	}
 
 	_, connWriteErr := conn.Write([]byte(responseStr))
