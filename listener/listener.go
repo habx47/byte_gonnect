@@ -74,7 +74,7 @@ func handleConn(conn net.Conn, logger Logger) {
 			state = stateHeaders
 		case stateHeaders:
 			parseHeadersErr := reqMetadata.ParseHeaders(line, isPrefix)
-			if errors.Is(parseHeadersErr, parseHeadersErr) {
+			if errors.Is(parseHeadersErr, parser.HeaderErr) {
 				conn.Write([]byte("HTTP/1.1 431 Request Header Fields Too Large\r\n\r\n"))
 				logger.Printf("%v", parser.HeaderErr)
 				return
@@ -94,8 +94,12 @@ func handleConn(conn net.Conn, logger Logger) {
 
 	body := make([]byte, reqMetadata.ContentLength.Value)
 	_, err := io.ReadFull(reader, body)
-	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-		conn.Write([]byte("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"))
+	if err != nil {
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+			conn.Write([]byte("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"))
+		} else {
+			logger.Printf("failed to read request body: %v", err)
+		}
 		return
 	}
 

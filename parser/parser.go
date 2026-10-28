@@ -63,6 +63,10 @@ func (r *ReqMetadata) ParseHeaders(line []byte, isPrefix bool) error {
 			r.ContentLength.Value = contentLength
 			r.ContentLength.isSet = true
 		}
+
+		if r.ContentLength.isSet {
+			return fmt.Errorf("%v: multiple Content-Length headers in the request", MalformedReqErr)
+		}
 	}
 	return nil
 }
