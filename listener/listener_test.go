@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"testing/iotest"
+
+	"github.com/habx47/byte_gonnect/parser"
 )
 
 type ReadErrConn struct {
@@ -37,7 +39,7 @@ func (w *WriteErrConn) Write(b []byte) (n int, err error) {
 
 func TestHandleConn(t *testing.T) {
 	t.Run("success on read & write", func(t *testing.T) {
-		inputMessage := "hello, world!\n"
+		request := "GET / HTTP/1.1\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello, Server"
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
 
@@ -46,20 +48,21 @@ func TestHandleConn(t *testing.T) {
 
 		go handleConn(serverSide, logger)
 
-		_, err := clientSide.Write([]byte(inputMessage))
+		_, err := clientSide.Write([]byte(request))
 		if err != nil {
 			t.Fatalf("failed to write to server: %v", err)
 		}
 
 		reader := bufio.NewReader(clientSide)
-		response, err := reader.ReadString('\n')
+		response, err := io.ReadAll(reader)
 		if err != nil {
 			t.Fatalf("failed to read response from server: %v", err)
 		}
 
-		expectedResponse := inputMessage
-		if response != expectedResponse {
-			t.Errorf("got %v, want %v", response, expectedResponse)
+		expectedResponse := []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello, Client")
+
+		if !bytes.Equal(response, expectedResponse) {
+			t.Errorf("got %s, want %s", response, expectedResponse)
 		}
 
 		clientSide.Close()
@@ -90,6 +93,7 @@ func TestHandleConn(t *testing.T) {
 	})
 
 	t.Run("error on conn write", func(t *testing.T) {
+		request := "GET / HTTP/1.1\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello, Server"
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
 		faultyConn := &WriteErrConn{
@@ -108,7 +112,7 @@ func TestHandleConn(t *testing.T) {
 			close(done)
 		}()
 
-		_, err := clientSide.Write([]byte("hello, world!\n"))
+		_, err := clientSide.Write([]byte(request))
 		if err != nil {
 			t.Fatalf("failed to write to server: %v", err)
 		}
@@ -124,5 +128,75 @@ func TestHandleConn(t *testing.T) {
 		if !strings.Contains(got, ServerWriteErr) {
 			t.Errorf("expected log to contain %q, but got: \n%s", ServerWriteErr, got)
 		}
+	})
+
+	t.Run("malformed request line", func(t *testing.T) {
+		request := "/ HTTP/1.1\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello, Server"
+		serverSide, clientSide := net.Pipe()
+		defer clientSide.Close()
+
+		var logBuffer bytes.Buffer
+		logger := log.New(&logBuffer, "", 0)
+
+		done := make(chan struct{})
+
+		go func() {
+			handleConn(serverSide, logger)
+			close(done)
+		}()
+
+		_, err := clientSide.Write([]byte(request))
+		if err != nil {
+			t.Fatalf("failed to write to server: %v", err)
+		}
+
+		<-done
+
+		got := logBuffer.String()
+
+		if !strings.Contains(got, "failed to parse request") {
+			t.Errorf("expected reqLineErr branch to execute, but got :\n%s", got)
+		}
+
+		if !strings.Contains(got, parser.MalformedReqErr.Error()) {
+			t.Errorf("expected log to contain %q, but got :\n%s", parser.MalformedReqErr, got)
+		}
+
+		clientSide.Close()
+	})
+
+	t.Run("malformed Content-Length", func(t *testing.T) {
+		request := "GET / HTTP/1.1\r\nContent-Type: text/plain\r\nContent-Length: abc\r\n\r\nHello, Server"
+		serverSide, clientSide := net.Pipe()
+		defer clientSide.Close()
+
+		var logBuffer bytes.Buffer
+		logger := log.New(&logBuffer, "", 0)
+
+		done := make(chan struct{})
+
+		go func() {
+			handleConn(serverSide, logger)
+			close(done)
+		}()
+
+		_, err := clientSide.Write([]byte(request))
+		if err != nil {
+			t.Fatalf("failed to write to server: %v", err)
+		}
+
+		<-done
+
+		got := logBuffer.String()
+
+		if !strings.Contains(got, "failed to parse request") {
+			t.Errorf("expected parseHeadersErr branch to execute, but got :\n%s", got)
+		}
+
+		if !strings.Contains(got, parser.ContentLengthErr.Error()) {
+			t.Errorf("expected log to contain %q, but got :\n%s", parser.ContentLengthErr, got)
+		}
+
+		clientSide.Close()
 	})
 }

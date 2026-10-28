@@ -61,16 +61,18 @@ func handleConn(conn net.Conn, logger Logger) {
 
 		switch state {
 		case stateRequestLine:
-			err := reqMetadata.ParseRequestLine(line)
-			if err != nil {
-				logger.Printf("failed to parse request: %v", err)
+			reqLineErr := reqMetadata.ParseRequestLine(line)
+			if reqLineErr != nil {
+				logger.Printf("failed to parse request: %v", reqLineErr)
 				return
 			}
 			state = stateHeaders
 		case stateHeaders:
-			err := reqMetadata.ParseHeaders(line)
-			logger.Printf("failed to parse request: %v", err)
-			return
+			parseHeadersErr := reqMetadata.ParseHeaders(line)
+			if parseHeadersErr != nil {
+				logger.Printf("failed to parse request: %v", parseHeadersErr)
+				return
+			}
 		}
 	}
 
