@@ -33,6 +33,7 @@ func Router(conn net.Conn, reqMetadata parser.ReqMetadata) error {
 }
 
 func handleGETReq(conn net.Conn, reqMetadata parser.ReqMetadata) error {
+	defer conn.Close()
 	path := reqMetadata.Path
 
 	switch path {
@@ -57,6 +58,7 @@ func handleGETReq(conn net.Conn, reqMetadata parser.ReqMetadata) error {
 }
 
 func handlePOSTReq(conn net.Conn) error {
+	defer conn.Close()
 	_, err := conn.Write(POSTresponseStr)
 	if err != nil {
 		return fmt.Errorf("failed to write to conn: %v", err)

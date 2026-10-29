@@ -1,7 +1,6 @@
 package listener
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"io"
@@ -53,8 +52,7 @@ func TestHandleConn(t *testing.T) {
 			t.Fatalf("failed to write to server: %v", err)
 		}
 
-		reader := bufio.NewReader(clientSide)
-		response, err := io.ReadAll(reader)
+		response, err := io.ReadAll(clientSide)
 		if err != nil {
 			t.Fatalf("failed to read response from server: %v", err)
 		}
