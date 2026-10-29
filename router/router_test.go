@@ -54,11 +54,44 @@ func TestGETReqHandling(t *testing.T) {
 		}
 
 		err := handleGETReq(&faultyConn, stubReqMetadata)
-
 		if err == nil {
 			t.Fatalf("expected an error: %v, but got nil", ConnWriteErr)
 		}
+		if !errors.Is(err, ConnWriteErr) {
+			t.Errorf("got: %v, want: %v", err, ConnWriteErr)
+		}
+	})
+}
 
+func TestPOSTReqHandling(t *testing.T) {
+	t.Run("success on write to conn", func(t *testing.T) {
+		serverSide, clientSide := net.Pipe()
+		defer clientSide.Close()
+
+		go handlePOSTReq(serverSide)
+
+		response, err := io.ReadAll(clientSide)
+		if err != nil {
+			t.Fatalf("expected no error, but got: %v", err)
+		}
+
+		if !bytes.Equal(response, POSTresponseStr) {
+			t.Errorf("got: %s,\n want: %s", response, POSTresponseStr)
+		}
+	})
+
+	t.Run("error on write", func(t *testing.T) {
+		serverSide, _ := net.Pipe()
+
+		faultyConn := WriteErrConn{
+			serverSide,
+			true,
+		}
+
+		err := handlePOSTReq(&faultyConn)
+		if err == nil {
+			t.Fatalf("expected an error: %v, but got nil", ConnWriteErr)
+		}
 		if !errors.Is(err, ConnWriteErr) {
 			t.Errorf("got: %v, want: %v", err, ConnWriteErr)
 		}
