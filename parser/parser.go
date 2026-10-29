@@ -55,18 +55,17 @@ func (r *ReqMetadata) ParseHeaders(line []byte, isPrefix bool) error {
 	}
 
 	if bytes.EqualFold(key, []byte("Content-Length")) {
-		if !r.ContentLength.isSet {
-			contentLength, err := strconv.ParseUint(string(value), 10, 64)
-			if err != nil {
-				return fmt.Errorf("%w: %w: %v", MalformedReqErr, ContentLengthErr, err)
-			}
-			r.ContentLength.Value = contentLength
-			r.ContentLength.isSet = true
-		}
-
 		if r.ContentLength.isSet {
 			return fmt.Errorf("%v: multiple Content-Length headers in the request", MalformedReqErr)
 		}
+
+		contentLength, err := strconv.ParseUint(string(value), 10, 64)
+		if err != nil {
+			return fmt.Errorf("%w: %w: %v", MalformedReqErr, ContentLengthErr, err)
+		}
+		r.ContentLength.Value = contentLength
+		r.ContentLength.isSet = true
+
 	}
 	return nil
 }
