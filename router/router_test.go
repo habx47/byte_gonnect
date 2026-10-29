@@ -30,7 +30,10 @@ func TestGETReqHandling(t *testing.T) {
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
 
-		go handleGETReq(serverSide, stubReqMetadata)
+		go func() {
+			handleGETReq(serverSide, stubReqMetadata)
+			serverSide.Close()
+		}()
 
 		response, err := io.ReadAll(clientSide)
 		if err != nil {
@@ -47,7 +50,7 @@ func TestGETReqHandling(t *testing.T) {
 	t.Run("error on write", func(t *testing.T) {
 		stubReqMetadata := parser.ReqMetadata{Method: "GET", Path: "/"}
 		serverSide, _ := net.Pipe()
-
+		defer serverSide.Close()
 		faultyConn := WriteErrConn{
 			serverSide,
 			true,
@@ -60,6 +63,8 @@ func TestGETReqHandling(t *testing.T) {
 		if !errors.Is(err, ConnWriteErr) {
 			t.Errorf("got: %v, want: %v", err, ConnWriteErr)
 		}
+
+		serverSide.Close()
 	})
 }
 
@@ -68,7 +73,10 @@ func TestPOSTReqHandling(t *testing.T) {
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
 
-		go handlePOSTReq(serverSide)
+		go func() {
+			handlePOSTReq(serverSide)
+			serverSide.Close()
+		}()
 
 		response, err := io.ReadAll(clientSide)
 		if err != nil {
@@ -82,6 +90,7 @@ func TestPOSTReqHandling(t *testing.T) {
 
 	t.Run("error on write", func(t *testing.T) {
 		serverSide, _ := net.Pipe()
+		defer serverSide.Close()
 
 		faultyConn := WriteErrConn{
 			serverSide,
@@ -95,5 +104,7 @@ func TestPOSTReqHandling(t *testing.T) {
 		if !errors.Is(err, ConnWriteErr) {
 			t.Errorf("got: %v, want: %v", err, ConnWriteErr)
 		}
+
+		serverSide.Close()
 	})
 }

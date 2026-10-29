@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/habx47/byte_gonnect/parser"
+	"github.com/habx47/byte_gonnect/router"
 )
 
 type Logger interface {
@@ -44,7 +45,6 @@ func Listener(port string) {
 func handleConn(conn net.Conn, logger Logger) {
 	defer conn.Close()
 	state := stateRequestLine
-	responseStr := "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\nConnection: close\r\n\r\nHello, Client"
 	reqMetadata := parser.ReqMetadata{}
 
 	reader := bufio.NewReaderSize(conn, 8192)
@@ -103,8 +103,7 @@ func handleConn(conn net.Conn, logger Logger) {
 		return
 	}
 
-	_, connWriteErr := conn.Write([]byte(responseStr))
-
+	connWriteErr := router.Router(conn, reqMetadata)
 	if connWriteErr != nil {
 		logger.Printf("failed to write to client: %v", connWriteErr)
 		return
