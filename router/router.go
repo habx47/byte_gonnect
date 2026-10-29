@@ -1,11 +1,14 @@
 package router
 
 import (
+	"errors"
 	"fmt"
 	"net"
 
 	"github.com/habx47/byte_gonnect/parser"
 )
+
+var ConnWriteErr = errors.New("failed to write to conn")
 
 var GETresponseStr_root = []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 25\r\nConnection: close\r\n\r\nHello, from the root page")
 var GETresponseStr_hello = []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 26\r\nConnection: close\r\n\r\nHello, from the hello page")
@@ -40,17 +43,17 @@ func handleGETReq(conn net.Conn, reqMetadata parser.ReqMetadata) error {
 	case "/":
 		_, err := conn.Write(GETresponseStr_root)
 		if err != nil {
-			return fmt.Errorf("failed to write to conn: %v", err)
+			return fmt.Errorf("%w: %v", ConnWriteErr, err)
 		}
 	case "/hello":
 		_, err := conn.Write(GETresponseStr_hello)
 		if err != nil {
-			return fmt.Errorf("failed to write to conn: %v", err)
+			return fmt.Errorf("%w: %v", ConnWriteErr, err)
 		}
 	default:
 		_, err := conn.Write(GETresponseStr_default)
 		if err != nil {
-			return fmt.Errorf("failed to write to conn: %v", err)
+			return fmt.Errorf("%w: %v", ConnWriteErr, err)
 		}
 	}
 
@@ -61,7 +64,7 @@ func handlePOSTReq(conn net.Conn) error {
 	defer conn.Close()
 	_, err := conn.Write(POSTresponseStr)
 	if err != nil {
-		return fmt.Errorf("failed to write to conn: %v", err)
+		return fmt.Errorf("%w: %v", ConnWriteErr, err)
 	}
 
 	return nil
