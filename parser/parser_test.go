@@ -13,25 +13,25 @@ func TestRequestLine(t *testing.T) {
 		tests := []struct {
 			fieldName string
 			assertion func() bool
-			got       string
+			got       func() string
 			want      string
 		}{
 			{
 				fieldName: "Method",
 				assertion: func() bool { return stubMetadata.Method == "GET" },
-				got:       stubMetadata.Method,
+				got:       func() string { return stubMetadata.Method },
 				want:      "GET",
 			},
 			{
 				fieldName: "Path",
 				assertion: func() bool { return stubMetadata.Path == "/" },
-				got:       stubMetadata.Path,
+				got:       func() string { return stubMetadata.Path },
 				want:      "/",
 			},
 			{
 				fieldName: "Version",
 				assertion: func() bool { return stubMetadata.Version == "HTTP/1.1" },
-				got:       stubMetadata.Version,
+				got:       func() string { return stubMetadata.Version },
 				want:      "HTTP/1.1",
 			},
 		}
@@ -44,7 +44,7 @@ func TestRequestLine(t *testing.T) {
 
 		for _, tt := range tests {
 			if !tt.assertion() {
-				t.Errorf("got %v, expected %v value for field %v", tt.got, tt.want, tt.fieldName)
+				t.Errorf("got %v, expected %v as value for field: %v", tt.got(), tt.want, tt.fieldName)
 			}
 		}
 	})

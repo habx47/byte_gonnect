@@ -3,14 +3,35 @@ package listener
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
+	"strings"
 
 	"github.com/habx47/byte_gonnect/parser"
 	"github.com/habx47/byte_gonnect/router"
 )
+
+var GETRsp_root = []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 25\r\nConnection: close\r\n\r\nHello, from the root page")
+var GETRsp_hello = []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 26\r\nConnection: close\r\n\r\nHello, from the hello page")
+
+var CreateRouteErr = errors.New("failed to create a route. missing '/'")
+
+func createRoutes(endpointResps router.EndpointResps, routes router.Routes) error {
+	for key := range endpointResps {
+		_, route, found := strings.Cut(key, "/")
+		if !found {
+			return fmt.Errorf("%w", CreateRouteErr)
+		}
+
+		route = "/" + route
+
+		routes[route] = true
+	}
+	return nil
+}
 
 type Logger interface {
 	Printf(format string, v ...any)
@@ -25,6 +46,17 @@ const MaxRequestBodySize = 10000
 
 func Listener(port string) {
 	logger := log.New(os.Stderr, "[SERVER] ", log.LstdFlags|log.Lshortfile)
+	routes := make(router.Routes)
+	endpointResps := router.EndpointResps{
+		"GET/":      GETRsp_root,
+		"GET/hello": GETRsp_hello,
+	}
+
+	err := createRoutes(endpointResps, routes)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
 	listener, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		logger.Fatal(err)
@@ -38,11 +70,11 @@ func Listener(port string) {
 			continue
 		}
 
-		go handleConn(conn, logger)
+		go handleConn(conn, logger, routes, endpointResps)
 	}
 }
 
-func handleConn(conn net.Conn, logger Logger) {
+func handleConn(conn net.Conn, logger Logger, routes router.Routes, endpointResps router.EndpointResps) {
 	defer conn.Close()
 	state := stateRequestLine
 	reqMetadata := parser.ReqMetadata{}
@@ -103,9 +135,9 @@ func handleConn(conn net.Conn, logger Logger) {
 		return
 	}
 
-	connWriteErr := router.Router(conn, reqMetadata)
-	if connWriteErr != nil {
-		logger.Printf("failed to write to client: %v", connWriteErr)
+	routerErr := router.Router(conn, reqMetadata, routes, endpointResps)
+	if routerErr != nil {
+		logger.Printf("failed to write to client: %v", routerErr)
 		return
 	}
 }

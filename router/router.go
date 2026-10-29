@@ -10,60 +10,62 @@ import (
 
 var ConnWriteErr = errors.New("failed to write to conn")
 
-var GETresponseStr_root = []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 25\r\nConnection: close\r\n\r\nHello, from the root page")
-var GETresponseStr_hello = []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 26\r\nConnection: close\r\n\r\nHello, from the hello page")
-var GETresponseStr_default = []byte("HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nContent-Length: 14 \r\nConnection: close\r\n\r\nPage not found")
+type Routes map[string]bool
+type EndpointResps map[string][]byte
 
-var POSTresponseStr = []byte("HTTP/1.1 405 Method Not Allowed\r\nContent-Type: text/plain\r\nContent-Length: 18\r\nConnection: close\r\n\r\nMethod not allowed")
+var Rsp_NotFound = []byte("HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nContent-Length: 14\r\nConnection: close\r\n\r\nPage not found")
+var Rsp_MethodNotAllowed = []byte("HTTP/1.1 405 Method Not Allowed\r\nContent-Type: text/plain\r\nContent-Length: 18\r\nConnection: close\r\n\r\nMethod not allowed")
 
-func Router(conn net.Conn, reqMetadata parser.ReqMetadata) error {
-	method := reqMetadata.Method
+func Router(conn net.Conn, reqMetadata parser.ReqMetadata, routes Routes, endpointResps EndpointResps) error {
 
-	switch method {
+	if _, ok := routes[reqMetadata.Path]; !ok {
+		_, err := conn.Write(Rsp_NotFound)
+		if err != nil {
+			return fmt.Errorf("%w: %v", ConnWriteErr, err)
+		}
+		return nil
+	}
+
+	endpoint := reqMetadata.Method + reqMetadata.Path
+	if _, ok := endpointResps[endpoint]; !ok {
+		_, err := conn.Write(Rsp_MethodNotAllowed)
+		if err != nil {
+			return fmt.Errorf("%w: %v", ConnWriteErr, err)
+		}
+		return nil
+	}
+
+	switch reqMetadata.Method {
 	case "GET":
-		err := handleGETReq(conn, reqMetadata)
+		err := handleGETReq(conn, reqMetadata, endpointResps)
 		if err != nil {
 			return err
 		}
 	case "POST":
-		err := handlePOSTReq(conn)
+		err := handlePOSTReq(conn, reqMetadata, endpointResps)
 		if err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
-func handleGETReq(conn net.Conn, reqMetadata parser.ReqMetadata) error {
-	path := reqMetadata.Path
+func handleGETReq(conn net.Conn, reqMetadata parser.ReqMetadata, endpointResps EndpointResps) error {
+	endpoint := reqMetadata.Method + reqMetadata.Path
 
-	switch path {
-	case "/":
-		_, err := conn.Write(GETresponseStr_root)
-		if err != nil {
-			return fmt.Errorf("%w: %v", ConnWriteErr, err)
-		}
-	case "/hello":
-		_, err := conn.Write(GETresponseStr_hello)
-		if err != nil {
-			return fmt.Errorf("%w: %v", ConnWriteErr, err)
-		}
-	default:
-		_, err := conn.Write(GETresponseStr_default)
-		if err != nil {
-			return fmt.Errorf("%w: %v", ConnWriteErr, err)
-		}
-	}
-
-	return nil
-}
-
-func handlePOSTReq(conn net.Conn) error {
-	_, err := conn.Write(POSTresponseStr)
+	_, err := conn.Write(endpointResps[endpoint])
 	if err != nil {
 		return fmt.Errorf("%w: %v", ConnWriteErr, err)
 	}
+	return nil
+}
 
+func handlePOSTReq(conn net.Conn, reqMetadata parser.ReqMetadata, endpointResps EndpointResps) error {
+	endpoint := reqMetadata.Method + reqMetadata.Path
+
+	_, err := conn.Write(endpointResps[endpoint])
+	if err != nil {
+		return fmt.Errorf("%w: %v", ConnWriteErr, err)
+	}
 	return nil
 }

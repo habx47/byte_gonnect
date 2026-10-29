@@ -39,13 +39,18 @@ func (w *WriteErrConn) Write(b []byte) (n int, err error) {
 func TestHandleConn(t *testing.T) {
 	t.Run("success on read & write", func(t *testing.T) {
 		request := "GET / HTTP/1.1\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello, Server"
+		stubRoutes := map[string]bool{"/": true}
+		stubEndpointResps := map[string][]byte{
+			"GET/":      GETRsp_root,
+			"GET/hello": GETRsp_hello,
+		}
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
 
 		var logBuffer bytes.Buffer
 		logger := log.New(&logBuffer, "", 0)
 
-		go handleConn(serverSide, logger)
+		go handleConn(serverSide, logger, stubRoutes, stubEndpointResps)
 
 		_, err := clientSide.Write([]byte(request))
 		if err != nil {
@@ -57,16 +62,19 @@ func TestHandleConn(t *testing.T) {
 			t.Fatalf("failed to read response from server: %v", err)
 		}
 
-		expectedResponse := []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\nConnection: close\r\n\r\nHello, Client")
-
-		if !bytes.Equal(response, expectedResponse) {
-			t.Errorf("got %s, want %s", response, expectedResponse)
+		if !bytes.Equal(response, GETRsp_root) {
+			t.Errorf("got: %s,\n want: %s", response, GETRsp_root)
 		}
 
 		clientSide.Close()
 	})
 
 	t.Run("error on conn read", func(t *testing.T) {
+		stubRoutes := map[string]bool{"/": true}
+		stubEndpointResps := map[string][]byte{
+			"GET/":      GETRsp_root,
+			"GET/hello": GETRsp_hello,
+		}
 		serverSide, _ := net.Pipe()
 		customErr := errors.New("read err")
 		faultyConn := &ReadErrConn{
@@ -77,7 +85,7 @@ func TestHandleConn(t *testing.T) {
 		var logBuffer bytes.Buffer
 		logger := log.New(&logBuffer, "", 0)
 
-		handleConn(faultyConn, logger)
+		handleConn(faultyConn, logger, stubRoutes, stubEndpointResps)
 
 		got := logBuffer.String()
 
@@ -92,6 +100,11 @@ func TestHandleConn(t *testing.T) {
 
 	t.Run("error on conn write", func(t *testing.T) {
 		request := "GET / HTTP/1.1\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello, Server"
+		stubRoutes := map[string]bool{"/": true}
+		stubEndpointResps := map[string][]byte{
+			"GET/":      GETRsp_root,
+			"GET/hello": GETRsp_hello,
+		}
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
 		faultyConn := &WriteErrConn{
@@ -106,7 +119,7 @@ func TestHandleConn(t *testing.T) {
 
 		go func() {
 			faultyConn.faultyWrite = true
-			handleConn(faultyConn, logger)
+			handleConn(faultyConn, logger, stubRoutes, stubEndpointResps)
 			close(done)
 		}()
 
@@ -130,6 +143,11 @@ func TestHandleConn(t *testing.T) {
 
 	t.Run("malformed request line", func(t *testing.T) {
 		request := "/ HTTP/1.1\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello, Server"
+		stubRoutes := map[string]bool{"/": true}
+		stubEndpointResps := map[string][]byte{
+			"GET/":      GETRsp_root,
+			"GET/hello": GETRsp_hello,
+		}
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
 
@@ -139,7 +157,7 @@ func TestHandleConn(t *testing.T) {
 		done := make(chan struct{})
 
 		go func() {
-			handleConn(serverSide, logger)
+			handleConn(serverSide, logger, stubRoutes, stubEndpointResps)
 			close(done)
 		}()
 
@@ -165,6 +183,11 @@ func TestHandleConn(t *testing.T) {
 
 	t.Run("malformed Content-Length", func(t *testing.T) {
 		request := "GET / HTTP/1.1\r\nContent-Type: text/plain\r\nContent-Length: abc\r\n\r\nHello, Server"
+		stubRoutes := map[string]bool{"/": true}
+		stubEndpointResps := map[string][]byte{
+			"GET/":      GETRsp_root,
+			"GET/hello": GETRsp_hello,
+		}
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
 
@@ -174,7 +197,7 @@ func TestHandleConn(t *testing.T) {
 		done := make(chan struct{})
 
 		go func() {
-			handleConn(serverSide, logger)
+			handleConn(serverSide, logger, stubRoutes, stubEndpointResps)
 			close(done)
 		}()
 
@@ -197,4 +220,33 @@ func TestHandleConn(t *testing.T) {
 
 		clientSide.Close()
 	})
+}
+
+func TestCreateRoutes(t *testing.T) {
+	stubRoutes := map[string]bool{}
+	stubEndpointResps := map[string][]byte{
+		"GET/":      GETRsp_root,
+		"GET/hello": GETRsp_hello,
+	}
+
+	tests := []struct{ expected string }{
+		{expected: "/"},
+		{expected: "/hello"},
+	}
+
+	err := createRoutes(stubEndpointResps, stubRoutes)
+	if err != nil {
+		t.Fatalf("expected no error, but got %v", err)
+	}
+
+	if len(stubRoutes) != len(stubEndpointResps) {
+		t.Fatalf("mismatch between routes registered and created. got: %v, registered: %v", len(stubRoutes), len(stubEndpointResps))
+	}
+
+	for _, tt := range tests {
+		exists := stubRoutes[tt.expected]
+		if !exists {
+			t.Errorf("expected route: %v not found", tt.expected)
+		}
+	}
 }

@@ -12,6 +12,8 @@ import (
 
 const ServerWriteErr = "server write error"
 
+var Rsp_root = []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 25\r\nConnection: close\r\n\r\nHello, from the root page")
+
 type WriteErrConn struct {
 	net.Conn
 	faultyWrite bool
@@ -27,11 +29,12 @@ func (w *WriteErrConn) Write(b []byte) (n int, err error) {
 func TestGETReqHandling(t *testing.T) {
 	t.Run("success on write to conn on path: /", func(t *testing.T) {
 		stubReqMetadata := parser.ReqMetadata{Method: "GET", Path: "/"}
+		stubEndpointResps := EndpointResps{"GET/": Rsp_root}
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
 
 		go func() {
-			handleGETReq(serverSide, stubReqMetadata)
+			handleGETReq(serverSide, stubReqMetadata, stubEndpointResps)
 			serverSide.Close()
 		}()
 
@@ -40,8 +43,8 @@ func TestGETReqHandling(t *testing.T) {
 			t.Fatalf("expected no error, but got %v", err)
 		}
 
-		if !bytes.Equal(response, GETresponseStr_root) {
-			t.Errorf("got: %s,\n want: %s", response, GETresponseStr_root)
+		if !bytes.Equal(response, Rsp_root) {
+			t.Errorf("got: %s,\n want: %s", response, Rsp_root)
 		}
 
 		clientSide.Close()
@@ -49,6 +52,7 @@ func TestGETReqHandling(t *testing.T) {
 
 	t.Run("error on write", func(t *testing.T) {
 		stubReqMetadata := parser.ReqMetadata{Method: "GET", Path: "/"}
+		stubEndpointResps := EndpointResps{"GET/": Rsp_root}
 		serverSide, _ := net.Pipe()
 		defer serverSide.Close()
 		faultyConn := WriteErrConn{
@@ -56,7 +60,7 @@ func TestGETReqHandling(t *testing.T) {
 			true,
 		}
 
-		err := handleGETReq(&faultyConn, stubReqMetadata)
+		err := handleGETReq(&faultyConn, stubReqMetadata, stubEndpointResps)
 		if err == nil {
 			t.Fatalf("expected an error: %v, but got nil", ConnWriteErr)
 		}
@@ -70,11 +74,13 @@ func TestGETReqHandling(t *testing.T) {
 
 func TestPOSTReqHandling(t *testing.T) {
 	t.Run("success on write to conn", func(t *testing.T) {
+		stubReqMetadata := parser.ReqMetadata{Method: "POST", Path: "/"}
+		stubEndpointResps := EndpointResps{"POST/": Rsp_root}
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
 
 		go func() {
-			handlePOSTReq(serverSide)
+			handlePOSTReq(serverSide, stubReqMetadata, stubEndpointResps)
 			serverSide.Close()
 		}()
 
@@ -83,12 +89,14 @@ func TestPOSTReqHandling(t *testing.T) {
 			t.Fatalf("expected no error, but got: %v", err)
 		}
 
-		if !bytes.Equal(response, POSTresponseStr) {
-			t.Errorf("got: %s,\n want: %s", response, POSTresponseStr)
+		if !bytes.Equal(response, Rsp_root) {
+			t.Errorf("got: %s,\n want: %s", response, Rsp_root)
 		}
 	})
 
 	t.Run("error on write", func(t *testing.T) {
+		stubReqMetadata := parser.ReqMetadata{Method: "POST", Path: "/"}
+		stubEndpointResps := EndpointResps{"POST/": Rsp_root}
 		serverSide, _ := net.Pipe()
 		defer serverSide.Close()
 
@@ -97,7 +105,7 @@ func TestPOSTReqHandling(t *testing.T) {
 			true,
 		}
 
-		err := handlePOSTReq(&faultyConn)
+		err := handlePOSTReq(&faultyConn, stubReqMetadata, stubEndpointResps)
 		if err == nil {
 			t.Fatalf("expected an error: %v, but got nil", ConnWriteErr)
 		}
