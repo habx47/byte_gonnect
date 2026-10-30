@@ -7,6 +7,7 @@ import (
 	"net"
 	"testing"
 
+	"github.com/habx47/byte_gonnect/endpoints"
 	"github.com/habx47/byte_gonnect/parser"
 )
 
@@ -29,7 +30,7 @@ func (w *WriteErrConn) Write(b []byte) (n int, err error) {
 func TestGETReqHandling(t *testing.T) {
 	t.Run("success on write to conn on path: /", func(t *testing.T) {
 		stubReqMetadata := parser.ReqMetadata{Method: "GET", Path: "/"}
-		stubEndpointResps := EndpointResps{"GET/": Rsp_root}
+		stubEndpointResps := endpoints.EndpointResps{"GET/": Rsp_root}
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
 
@@ -52,7 +53,7 @@ func TestGETReqHandling(t *testing.T) {
 
 	t.Run("error on write", func(t *testing.T) {
 		stubReqMetadata := parser.ReqMetadata{Method: "GET", Path: "/"}
-		stubEndpointResps := EndpointResps{"GET/": Rsp_root}
+		stubEndpointResps := endpoints.EndpointResps{"GET/": Rsp_root}
 		serverSide, _ := net.Pipe()
 		defer serverSide.Close()
 		faultyConn := WriteErrConn{
@@ -75,7 +76,7 @@ func TestGETReqHandling(t *testing.T) {
 func TestPOSTReqHandling(t *testing.T) {
 	t.Run("success on write to conn", func(t *testing.T) {
 		stubReqMetadata := parser.ReqMetadata{Method: "POST", Path: "/"}
-		stubEndpointResps := EndpointResps{"POST/": Rsp_root}
+		stubEndpointResps := endpoints.EndpointResps{"POST/": Rsp_root}
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
 
@@ -96,7 +97,7 @@ func TestPOSTReqHandling(t *testing.T) {
 
 	t.Run("error on write", func(t *testing.T) {
 		stubReqMetadata := parser.ReqMetadata{Method: "POST", Path: "/"}
-		stubEndpointResps := EndpointResps{"POST/": Rsp_root}
+		stubEndpointResps := endpoints.EndpointResps{"POST/": Rsp_root}
 		serverSide, _ := net.Pipe()
 		defer serverSide.Close()
 
