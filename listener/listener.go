@@ -12,6 +12,9 @@ import (
 	"github.com/habx47/byte_gonnect/router"
 )
 
+var URIErr = errors.New("URI too long")
+var HeaderErr = errors.New("headers too large")
+
 type Logger interface {
 	Printf(format string, v ...any)
 }
@@ -72,24 +75,25 @@ func handleConn(conn net.Conn, logger Logger, routes router.Routes, endpointResp
 
 		switch state {
 		case stateRequestLine:
-			reqLineErr := reqMetadata.ParseRequestLine(line, isPrefix)
-			if errors.Is(reqLineErr, parser.URIErr) {
+			if isPrefix {
 				conn.Write([]byte("HTTP/1.1 414 URI too long\r\n\r\n"))
-				logger.Printf("%v", parser.URIErr)
+				logger.Printf("%v", URIErr)
 				return
 			}
+
+			reqLineErr := reqMetadata.ParseRequestLine(line)
 			if reqLineErr != nil {
 				logger.Printf("failed to parse request: %v", reqLineErr)
 				return
 			}
 			state = stateHeaders
 		case stateHeaders:
-			parseHeadersErr := reqMetadata.ParseHeaders(line, isPrefix)
-			if errors.Is(parseHeadersErr, parser.HeaderErr) {
+			if isPrefix {
 				conn.Write([]byte("HTTP/1.1 431 Request Header Fields Too Large\r\n\r\n"))
-				logger.Printf("%v", parser.HeaderErr)
+				logger.Printf("%v", HeaderErr)
 				return
 			}
+			parseHeadersErr := reqMetadata.ParseHeaders(line)
 			if parseHeadersErr != nil {
 				logger.Printf("failed to parse request: %v", parseHeadersErr)
 				return

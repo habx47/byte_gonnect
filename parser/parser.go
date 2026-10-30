@@ -18,15 +18,9 @@ type ReqMetadata struct {
 }
 
 var MalformedReqErr = errors.New("malformed request")
-var URIErr = errors.New("URI too long")
 var ContentLengthErr = errors.New("cannot parse content-length header")
-var HeaderErr = errors.New("headers too large")
 
-func (r *ReqMetadata) ParseRequestLine(line []byte, isPrefix bool) error {
-	if isPrefix {
-		return fmt.Errorf("%w - %w - response status line", MalformedReqErr, URIErr)
-	}
-
+func (r *ReqMetadata) ParseRequestLine(line []byte) error {
 	reqLineParts := bytes.Fields(line)
 	if len(reqLineParts) != 3 {
 		return fmt.Errorf("%w - response status line", MalformedReqErr)
@@ -38,11 +32,7 @@ func (r *ReqMetadata) ParseRequestLine(line []byte, isPrefix bool) error {
 	return nil
 }
 
-func (r *ReqMetadata) ParseHeaders(line []byte, isPrefix bool) error {
-	if isPrefix {
-		return fmt.Errorf("%w: %w", MalformedReqErr, HeaderErr)
-	}
-
+func (r *ReqMetadata) ParseHeaders(line []byte) error {
 	key, value, found := bytes.Cut(line, []byte(":"))
 
 	if !found {

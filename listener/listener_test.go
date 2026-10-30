@@ -220,6 +220,38 @@ func TestHandleConn(t *testing.T) {
 
 		clientSide.Close()
 	})
+
+	t.Run("request line too long", func(t *testing.T) {
+		r := []byte("this is a huge request")
+		request := bytes.Repeat(r, (8192/len(r))+1)
+		stubRoutes := map[string]bool{"/": true}
+		stubEndpointResps := map[string][]byte{
+			"GET/": GETRsp_root,
+		}
+		serverSide, clientSide := net.Pipe()
+		defer clientSide.Close()
+
+		var logBuffer bytes.Buffer
+		logger := log.New(&logBuffer, "", 0)
+
+		go handleConn(serverSide, logger, stubRoutes, stubEndpointResps)
+
+		go func() {
+			clientSide.Write(request)
+		}()
+
+		response, err := io.ReadAll(clientSide)
+		if err != nil {
+			t.Fatalf("failed to read response from server: %v", err)
+		}
+
+		if !bytes.Equal(response, []byte("HTTP/1.1 414 URI too long\r\n\r\n")) {
+			t.Errorf("got: %s,\n want: %v", response, "HTTP/1.1 414 URI too long\r\n\r\n")
+		}
+
+		clientSide.Close()
+	})
+
 }
 
 func TestCreateRoutes(t *testing.T) {

@@ -36,7 +36,7 @@ func TestRequestLine(t *testing.T) {
 			},
 		}
 
-		err := stubMetadata.ParseRequestLine(line, false)
+		err := stubMetadata.ParseRequestLine(line)
 
 		if err != nil {
 			t.Fatalf("failed to parser request status line: %v", err)
@@ -53,7 +53,7 @@ func TestRequestLine(t *testing.T) {
 		var stubMetadata ReqMetadata
 		line := []byte("GET /")
 
-		err := stubMetadata.ParseRequestLine(line, false)
+		err := stubMetadata.ParseRequestLine(line)
 
 		if err == nil {
 			t.Fatalf("expected an error: %v, but got nil", MalformedReqErr)
@@ -93,7 +93,7 @@ func TestRequestLine(t *testing.T) {
 			},
 		}
 
-		err := stubMetadata.ParseRequestLine(line, false)
+		err := stubMetadata.ParseRequestLine(line)
 		if err != nil {
 			t.Fatalf("expected no err, but got: %v", err)
 		}
@@ -111,7 +111,7 @@ func TestParseHeaders(t *testing.T) {
 		var stubMetadata ReqMetadata
 
 		line := []byte("Content-Length: 10")
-		err := stubMetadata.ParseHeaders(line, false)
+		err := stubMetadata.ParseHeaders(line)
 		if err != nil {
 			t.Fatalf("expected no error but got: %v", err)
 		}
@@ -127,7 +127,7 @@ func TestParseHeaders(t *testing.T) {
 		var stubMetadata ReqMetadata
 		line := []byte("Content-Length: abc")
 
-		err := stubMetadata.ParseHeaders(line, false)
+		err := stubMetadata.ParseHeaders(line)
 		if err == nil {
 			t.Fatalf("expected error: %v, but got nil", ContentLengthErr)
 		}
