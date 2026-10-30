@@ -4,17 +4,11 @@ import (
 	"errors"
 	"strings"
 	"testing"
-
-	"github.com/habx47/byte_gonnect/endpoints"
 )
 
 func TestRequestLine(t *testing.T) {
 	t.Run("valid request", func(t *testing.T) {
 		var stubMetadata ReqMetadata
-		stubRoutes := map[string]bool{"/": true}
-		stubEndpointResps := map[string][]byte{
-			"GET/": endpoints.GETRsp_root,
-		}
 		line := []byte("GET / HTTP/1.1")
 		tests := []struct {
 			fieldName string
@@ -42,7 +36,7 @@ func TestRequestLine(t *testing.T) {
 			},
 		}
 
-		err := stubMetadata.ParseRequestLine(line, stubRoutes, stubEndpointResps)
+		err := stubMetadata.ParseRequestLine(line)
 
 		if err != nil {
 			t.Fatalf("failed to parser request status line: %v", err)
@@ -58,28 +52,20 @@ func TestRequestLine(t *testing.T) {
 	t.Run("invalid request", func(t *testing.T) {
 		var stubMetadata ReqMetadata
 		line := []byte("GET /")
-		stubRoutes := map[string]bool{"/": true}
-		stubEndpointResps := map[string][]byte{
-			"GET/": endpoints.GETRsp_root,
-		}
 
-		err := stubMetadata.ParseRequestLine(line, stubRoutes, stubEndpointResps)
+		err := stubMetadata.ParseRequestLine(line)
 
 		if err == nil {
-			t.Fatalf("expected an error: %v, but got nil", MalformedReqErr)
+			t.Fatalf("expected an error: %v, but got nil", BadRequestErr)
 		}
 
-		if !strings.Contains(err.Error(), MalformedReqErr.Error()) {
-			t.Errorf("expected err to contain %q, but got %v", MalformedReqErr, err)
+		if !strings.Contains(err.Error(), BadRequestErr.Error()) {
+			t.Errorf("expected err to contain %q, but got %v", BadRequestErr, err)
 		}
 	})
 
 	t.Run("request with extra whitespces", func(t *testing.T) {
 		var stubMetadata ReqMetadata
-		stubRoutes := map[string]bool{"/": true}
-		stubEndpointResps := map[string][]byte{
-			"GET/": endpoints.GETRsp_root,
-		}
 		line := []byte("GET        /       HTTP/1.1")
 		tests := []struct {
 			fieldName string
@@ -107,7 +93,7 @@ func TestRequestLine(t *testing.T) {
 			},
 		}
 
-		err := stubMetadata.ParseRequestLine(line, stubRoutes, stubEndpointResps)
+		err := stubMetadata.ParseRequestLine(line)
 		if err != nil {
 			t.Fatalf("expected no err, but got: %v", err)
 		}
@@ -121,13 +107,9 @@ func TestRequestLine(t *testing.T) {
 
 	t.Run("invalid version", func(t *testing.T) {
 		var stubMetadata ReqMetadata
-		stubRoutes := map[string]bool{"/": true}
-		stubEndpointResps := map[string][]byte{
-			"GET/": endpoints.GETRsp_root,
-		}
 		line := []byte("GET / HTTP/2.0")
 
-		err := stubMetadata.ParseRequestLine(line, stubRoutes, stubEndpointResps)
+		err := stubMetadata.ParseRequestLine(line)
 		if err == nil {
 			t.Fatalf("expected an err but got nil")
 		}
@@ -139,13 +121,9 @@ func TestRequestLine(t *testing.T) {
 
 	t.Run("unsupported method", func(t *testing.T) {
 		var stubMetadata ReqMetadata
-		stubRoutes := map[string]bool{"/": true}
-		stubEndpointResps := map[string][]byte{
-			"GET/": endpoints.GETRsp_root,
-		}
 		line := []byte("HEAD / HTTP/1.1")
 
-		err := stubMetadata.ParseRequestLine(line, stubRoutes, stubEndpointResps)
+		err := stubMetadata.ParseRequestLine(line)
 		if err == nil {
 			t.Fatalf("expected an err but got nil")
 		}

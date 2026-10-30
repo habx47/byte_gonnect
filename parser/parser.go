@@ -27,7 +27,7 @@ var MalformedHeaderErr = errors.New("malformed header")
 var HTTPVersionErr = errors.New("unsupported http version")
 var MethodNotSupportedErr = errors.New("method not currently supported")
 
-func (r *ReqMetadata) ParseRequestLine(line []byte, routes endpoints.Routes, endpointResps endpoints.EndpointResps) error {
+func (r *ReqMetadata) ParseRequestLine(line []byte) error {
 	reqLineParts := bytes.Fields(line)
 	if len(reqLineParts) != 3 {
 		return fmt.Errorf("%w - response status line", BadRequestErr)

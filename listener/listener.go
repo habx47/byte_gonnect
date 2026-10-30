@@ -85,7 +85,7 @@ func handleConn(conn net.Conn, logger Logger, routes endpoints.Routes, endpointR
 				return
 			}
 
-			reqLineErr := reqMetadata.ParseRequestLine(line, routes, endpointResps)
+			reqLineErr := reqMetadata.ParseRequestLine(line)
 			if reqLineErr != nil {
 				_, err := conn.Write(endpoints.Rsp_BadRequest)
 				if err != nil {
@@ -118,7 +118,7 @@ func handleConn(conn net.Conn, logger Logger, routes endpoints.Routes, endpointR
 		if err != nil {
 			logger.Printf("failed to write to conn: %v", err)
 		}
-		logger.Printf("%v: request body size more than allowed", parser.MalformedReqErr)
+		logger.Printf("%v: request body size more than allowed", parser.BadRequestErr)
 		return
 	}
 
