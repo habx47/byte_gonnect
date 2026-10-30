@@ -3,6 +3,7 @@ package listener
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -76,7 +77,10 @@ func handleConn(conn net.Conn, logger Logger, routes router.Routes, endpointResp
 		switch state {
 		case stateRequestLine:
 			if isPrefix {
-				conn.Write([]byte("HTTP/1.1 414 URI too long\r\n\r\n"))
+				_, err := conn.Write([]byte("HTTP/1.1 414 URI too long\r\n\r\n"))
+				if err != nil {
+					logger.Printf("failed to write to conn: %v", err)
+				}
 				logger.Printf("%v", URIErr)
 				return
 			}
@@ -89,7 +93,10 @@ func handleConn(conn net.Conn, logger Logger, routes router.Routes, endpointResp
 			state = stateHeaders
 		case stateHeaders:
 			if isPrefix {
-				conn.Write([]byte("HTTP/1.1 431 Request Header Fields Too Large\r\n\r\n"))
+				_, err := conn.Write([]byte("HTTP/1.1 431 Request Header Fields Too Large\r\n\r\n"))
+				if err != nil {
+					logger.Printf("failed to write to conn: %v", err)
+				}
 				logger.Printf("%v", HeaderErr)
 				return
 			}
@@ -102,7 +109,10 @@ func handleConn(conn net.Conn, logger Logger, routes router.Routes, endpointResp
 	}
 
 	if reqMetadata.ContentLength.Value > MaxRequestBodySize {
-		conn.Write([]byte("HTTP/1.1 413 Payload Too Large\r\nConnection: close\r\n\r\n"))
+		_, err := conn.Write([]byte("HTTP/1.1 413 Payload Too Large\r\nConnection: close\r\n\r\n"))
+		if err != nil {
+			logger.Printf("failed to write to conn: %v", err)
+		}
 		logger.Printf("%v: request body size more than allowed", parser.MalformedReqErr)
 		return
 	}
@@ -111,7 +121,10 @@ func handleConn(conn net.Conn, logger Logger, routes router.Routes, endpointResp
 	_, err := io.ReadFull(reader, body)
 	if err != nil {
 		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-			conn.Write([]byte("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"))
+			_, err := conn.Write([]byte("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"))
+			if err != nil {
+				logger.Printf("failed to write to conn: %v", err)
+			}
 		} else {
 			logger.Printf("failed to read request body: %v", err)
 		}

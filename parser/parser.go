@@ -19,6 +19,7 @@ type ReqMetadata struct {
 
 var MalformedReqErr = errors.New("malformed request")
 var ContentLengthErr = errors.New("cannot parse content-length header")
+var MalformedHeaderErr = errors.New("malformed header")
 
 func (r *ReqMetadata) ParseRequestLine(line []byte) error {
 	reqLineParts := bytes.Fields(line)
@@ -36,7 +37,7 @@ func (r *ReqMetadata) ParseHeaders(line []byte) error {
 	key, value, found := bytes.Cut(line, []byte(":"))
 
 	if !found {
-		return fmt.Errorf("%w: %w", MalformedReqErr, ContentLengthErr)
+		return fmt.Errorf("%w", MalformedHeaderErr)
 	}
 
 	if found {
