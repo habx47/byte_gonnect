@@ -3,12 +3,12 @@ package listener
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
 
+	"github.com/habx47/byte_gonnect/endpoints"
 	"github.com/habx47/byte_gonnect/parser"
 	"github.com/habx47/byte_gonnect/router"
 )
@@ -29,8 +29,8 @@ const MaxRequestBodySize = 10000
 
 func Listener(port string) {
 	logger := log.New(os.Stderr, "[SERVER] ", log.LstdFlags|log.Lshortfile)
-	routes := make(router.Routes)
-	endpointResps := router.EndpointResps{
+	routes := make(endpoints.Routes)
+	endpointResps := endpoints.EndpointResps{
 		"GET/":      GETRsp_root,
 		"GET/hello": GETRsp_hello,
 	}
@@ -57,7 +57,7 @@ func Listener(port string) {
 	}
 }
 
-func handleConn(conn net.Conn, logger Logger, routes router.Routes, endpointResps router.EndpointResps) {
+func handleConn(conn net.Conn, logger Logger, routes endpoints.Routes, endpointResps endpoints.EndpointResps) {
 	defer conn.Close()
 	state := stateRequestLine
 	reqMetadata := parser.ReqMetadata{}
@@ -77,7 +77,7 @@ func handleConn(conn net.Conn, logger Logger, routes router.Routes, endpointResp
 		switch state {
 		case stateRequestLine:
 			if isPrefix {
-				_, err := conn.Write([]byte("HTTP/1.1 414 URI too long\r\n\r\n"))
+				_, err := conn.Write([]byte("HTTP/1.1 414 URI too long\r\nConnection: close\r\n\r\n"))
 				if err != nil {
 					logger.Printf("failed to write to conn: %v", err)
 				}
@@ -85,15 +85,30 @@ func handleConn(conn net.Conn, logger Logger, routes router.Routes, endpointResp
 				return
 			}
 
-			reqLineErr := reqMetadata.ParseRequestLine(line)
+			reqLineErr := reqMetadata.ParseRequestLine(line, routes, endpointResps)
 			if reqLineErr != nil {
-				logger.Printf("failed to parse request: %v", reqLineErr)
+				var response []byte
+
+				switch {
+				case errors.Is(reqLineErr, parser.NotFoundErr):
+					response = endpoints.Rsp_NotFound
+				case errors.Is(reqLineErr, parser.MethodNotAllowedErr):
+					response = endpoints.Rsp_MethodNotAllowed
+				default:
+					response = endpoints.Rsp_BadRequest
+				}
+
+				_, err := conn.Write(response)
+				if err != nil {
+					logger.Printf("failed to write to client: %v", err)
+					logger.Printf("failed to parse the request: %v", reqLineErr)
+				}
 				return
 			}
 			state = stateHeaders
 		case stateHeaders:
 			if isPrefix {
-				_, err := conn.Write([]byte("HTTP/1.1 431 Request Header Fields Too Large\r\n\r\n"))
+				_, err := conn.Write([]byte("HTTP/1.1 431 Request Header Fields Too Large\r\nConnection: close\r\n\r\n"))
 				if err != nil {
 					logger.Printf("failed to write to conn: %v", err)
 				}
@@ -102,6 +117,7 @@ func handleConn(conn net.Conn, logger Logger, routes router.Routes, endpointResp
 			}
 			parseHeadersErr := reqMetadata.ParseHeaders(line)
 			if parseHeadersErr != nil {
+				conn.Write(endpoints.Rsp_BadRequest)
 				logger.Printf("failed to parse request: %v", parseHeadersErr)
 				return
 			}

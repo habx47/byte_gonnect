@@ -5,22 +5,17 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/habx47/byte_gonnect/endpoints"
 	"github.com/habx47/byte_gonnect/parser"
 )
 
 var ConnWriteErr = errors.New("failed to write to conn")
-var MethodHandlingErr = errors.New("missing valid method handling")
+var MethodHandlingErr = errors.New("registered method handling not implemented")
 
-type Routes map[string]bool
-type EndpointResps map[string][]byte
-
-var Rsp_NotFound = []byte("HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nContent-Length: 14\r\nConnection: close\r\n\r\nPage not found")
-var Rsp_MethodNotAllowed = []byte("HTTP/1.1 405 Method Not Allowed\r\nContent-Type: text/plain\r\nContent-Length: 18\r\nConnection: close\r\n\r\nMethod not allowed")
-
-func Router(conn net.Conn, reqMetadata parser.ReqMetadata, routes Routes, endpointResps EndpointResps) error {
+func Router(conn net.Conn, reqMetadata parser.ReqMetadata, routes endpoints.Routes, endpointResps endpoints.EndpointResps) error {
 
 	if _, ok := routes[reqMetadata.Path]; !ok {
-		_, err := conn.Write(Rsp_NotFound)
+		_, err := conn.Write(endpoints.Rsp_NotFound)
 		if err != nil {
 			return fmt.Errorf("%w: %v", ConnWriteErr, err)
 		}
@@ -29,7 +24,7 @@ func Router(conn net.Conn, reqMetadata parser.ReqMetadata, routes Routes, endpoi
 
 	endpoint := reqMetadata.Method + reqMetadata.Path
 	if _, ok := endpointResps[endpoint]; !ok {
-		_, err := conn.Write(Rsp_MethodNotAllowed)
+		_, err := conn.Write(endpoints.Rsp_MethodNotAllowed)
 		if err != nil {
 			return fmt.Errorf("%w: %v", ConnWriteErr, err)
 		}
@@ -53,7 +48,7 @@ func Router(conn net.Conn, reqMetadata parser.ReqMetadata, routes Routes, endpoi
 	return nil
 }
 
-func handleGETReq(conn net.Conn, reqMetadata parser.ReqMetadata, endpointResps EndpointResps) error {
+func handleGETReq(conn net.Conn, reqMetadata parser.ReqMetadata, endpointResps endpoints.EndpointResps) error {
 	endpoint := reqMetadata.Method + reqMetadata.Path
 
 	_, err := conn.Write(endpointResps[endpoint])
@@ -63,7 +58,7 @@ func handleGETReq(conn net.Conn, reqMetadata parser.ReqMetadata, endpointResps E
 	return nil
 }
 
-func handlePOSTReq(conn net.Conn, reqMetadata parser.ReqMetadata, endpointResps EndpointResps) error {
+func handlePOSTReq(conn net.Conn, reqMetadata parser.ReqMetadata, endpointResps endpoints.EndpointResps) error {
 	endpoint := reqMetadata.Method + reqMetadata.Path
 
 	_, err := conn.Write(endpointResps[endpoint])

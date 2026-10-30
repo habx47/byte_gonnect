@@ -4,7 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net"
+	"slices"
 	"strconv"
+
+	"github.com/habx47/byte_gonnect/endpoints"
 )
 
 type ReqMetadata struct {
@@ -20,11 +24,32 @@ type ReqMetadata struct {
 var MalformedReqErr = errors.New("malformed request")
 var ContentLengthErr = errors.New("cannot parse content-length header")
 var MalformedHeaderErr = errors.New("malformed header")
+var HTTPVersionErr = errors.New("unsupported http version")
+var MethodNotSupportedErr = errors.New("method not currently supported")
+var NotFoundErr = errors.New("not found")
+var MethodNotAllowedErr = errors.New("method not allowed")
 
-func (r *ReqMetadata) ParseRequestLine(line []byte) error {
+func (r *ReqMetadata) ParseRequestLine(line []byte, routes endpoints.Routes, endpointResps endpoints.EndpointResps) error {
 	reqLineParts := bytes.Fields(line)
 	if len(reqLineParts) != 3 {
 		return fmt.Errorf("%w - response status line", MalformedReqErr)
+	}
+
+	if !bytes.Equal(reqLineParts[2], []byte(endpoints.HTTPVersion)) {
+		return fmt.Errorf("%w - response status line", HTTPVersionErr)
+	}
+
+	if !slices.Contains(endpoints.SupportedMethods, r.Method) {
+		return fmt.Errorf("%w - response status line", MethodNotSupportedErr)
+	}
+
+	if _, ok := routes[r.Path]; !ok {
+		return fmt.Errorf("%w", NotFoundErr)
+	}
+
+	endpoint := r.Method + r.Path
+	if _, ok := endpointResps[endpoint]; !ok {
+		return fmt.Errorf("%w", MethodNotAllowedErr)
 	}
 
 	r.Method = string(reqLineParts[0])
