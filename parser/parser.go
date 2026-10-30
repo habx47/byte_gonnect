@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"net"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/habx47/byte_gonnect/endpoints"
 )
@@ -35,26 +35,30 @@ func (r *ReqMetadata) ParseRequestLine(line []byte, routes endpoints.Routes, end
 		return fmt.Errorf("%w - response status line", MalformedReqErr)
 	}
 
-	if !bytes.Equal(reqLineParts[2], []byte(endpoints.HTTPVersion)) {
+	method := string(reqLineParts[0])
+	path := string(reqLineParts[1])
+	version := string(reqLineParts[2])
+
+	if !strings.EqualFold(version, endpoints.HTTPVersion) {
 		return fmt.Errorf("%w - response status line", HTTPVersionErr)
 	}
 
-	if !slices.Contains(endpoints.SupportedMethods, r.Method) {
+	if !slices.Contains(endpoints.SupportedMethods, method) {
 		return fmt.Errorf("%w - response status line", MethodNotSupportedErr)
 	}
 
-	if _, ok := routes[r.Path]; !ok {
+	if _, ok := routes[path]; !ok {
 		return fmt.Errorf("%w", NotFoundErr)
 	}
 
-	endpoint := r.Method + r.Path
+	endpoint := method + path
 	if _, ok := endpointResps[endpoint]; !ok {
 		return fmt.Errorf("%w", MethodNotAllowedErr)
 	}
 
-	r.Method = string(reqLineParts[0])
-	r.Path = string(reqLineParts[1])
-	r.Version = string(reqLineParts[2])
+	r.Method = method
+	r.Path = path
+	r.Version = version
 	return nil
 }
 

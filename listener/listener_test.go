@@ -10,6 +10,7 @@ import (
 	"testing"
 	"testing/iotest"
 
+	"github.com/habx47/byte_gonnect/endpoints"
 	"github.com/habx47/byte_gonnect/parser"
 )
 
@@ -41,8 +42,8 @@ func TestHandleConn(t *testing.T) {
 		request := "GET / HTTP/1.1\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello, Server"
 		stubRoutes := map[string]bool{"/": true}
 		stubEndpointResps := map[string][]byte{
-			"GET/":      GETRsp_root,
-			"GET/hello": GETRsp_hello,
+			"GET/":      endpoints.GETRsp_root,
+			"GET/hello": endpoints.GETRsp_hello,
 		}
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
@@ -62,8 +63,8 @@ func TestHandleConn(t *testing.T) {
 			t.Fatalf("failed to read response from server: %v", err)
 		}
 
-		if !bytes.Equal(response, GETRsp_root) {
-			t.Errorf("got: %s,\n want: %s", response, GETRsp_root)
+		if !bytes.Equal(response, endpoints.GETRsp_root) {
+			t.Errorf("got: %s,\n want: %s", response, endpoints.GETRsp_root)
 		}
 
 		clientSide.Close()
@@ -72,8 +73,8 @@ func TestHandleConn(t *testing.T) {
 	t.Run("error on conn read", func(t *testing.T) {
 		stubRoutes := map[string]bool{"/": true}
 		stubEndpointResps := map[string][]byte{
-			"GET/":      GETRsp_root,
-			"GET/hello": GETRsp_hello,
+			"GET/":      endpoints.GETRsp_root,
+			"GET/hello": endpoints.GETRsp_hello,
 		}
 		serverSide, _ := net.Pipe()
 		customErr := errors.New("read err")
@@ -102,8 +103,8 @@ func TestHandleConn(t *testing.T) {
 		request := "GET / HTTP/1.1\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello, Server"
 		stubRoutes := map[string]bool{"/": true}
 		stubEndpointResps := map[string][]byte{
-			"GET/":      GETRsp_root,
-			"GET/hello": GETRsp_hello,
+			"GET/":      endpoints.GETRsp_root,
+			"GET/hello": endpoints.GETRsp_hello,
 		}
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
@@ -145,8 +146,8 @@ func TestHandleConn(t *testing.T) {
 		request := "/ HTTP/1.1\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello, Server"
 		stubRoutes := map[string]bool{"/": true}
 		stubEndpointResps := map[string][]byte{
-			"GET/":      GETRsp_root,
-			"GET/hello": GETRsp_hello,
+			"GET/":      endpoints.GETRsp_root,
+			"GET/hello": endpoints.GETRsp_hello,
 		}
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
@@ -185,8 +186,8 @@ func TestHandleConn(t *testing.T) {
 		request := "GET / HTTP/1.1\r\nContent-Type: text/plain\r\nContent-Length: abc\r\n\r\nHello, Server"
 		stubRoutes := map[string]bool{"/": true}
 		stubEndpointResps := map[string][]byte{
-			"GET/":      GETRsp_root,
-			"GET/hello": GETRsp_hello,
+			"GET/":      endpoints.GETRsp_root,
+			"GET/hello": endpoints.GETRsp_hello,
 		}
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
@@ -226,7 +227,7 @@ func TestHandleConn(t *testing.T) {
 		request := bytes.Repeat(r, (8192/len(r))+1)
 		stubRoutes := map[string]bool{"/": true}
 		stubEndpointResps := map[string][]byte{
-			"GET/": GETRsp_root,
+			"GET/": endpoints.GETRsp_root,
 		}
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
@@ -257,8 +258,8 @@ func TestHandleConn(t *testing.T) {
 func TestCreateRoutes(t *testing.T) {
 	stubRoutes := map[string]bool{}
 	stubEndpointResps := map[string][]byte{
-		"GET/":      GETRsp_root,
-		"GET/hello": GETRsp_hello,
+		"GET/":      endpoints.GETRsp_root,
+		"GET/hello": endpoints.GETRsp_hello,
 	}
 
 	tests := []struct{ expected string }{

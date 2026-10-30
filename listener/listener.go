@@ -31,8 +31,8 @@ func Listener(port string) {
 	logger := log.New(os.Stderr, "[SERVER] ", log.LstdFlags|log.Lshortfile)
 	routes := make(endpoints.Routes)
 	endpointResps := endpoints.EndpointResps{
-		"GET/":      GETRsp_root,
-		"GET/hello": GETRsp_hello,
+		"GET/":      endpoints.GETRsp_root,
+		"GET/hello": endpoints.GETRsp_hello,
 	}
 
 	err := createRoutes(endpointResps, routes)
