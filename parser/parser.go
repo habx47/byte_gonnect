@@ -21,18 +21,16 @@ type ReqMetadata struct {
 	}
 }
 
-var MalformedReqErr = errors.New("malformed request")
+var BadRequestErr = errors.New("bad request")
 var ContentLengthErr = errors.New("cannot parse content-length header")
 var MalformedHeaderErr = errors.New("malformed header")
 var HTTPVersionErr = errors.New("unsupported http version")
 var MethodNotSupportedErr = errors.New("method not currently supported")
-var NotFoundErr = errors.New("not found")
-var MethodNotAllowedErr = errors.New("method not allowed")
 
 func (r *ReqMetadata) ParseRequestLine(line []byte, routes endpoints.Routes, endpointResps endpoints.EndpointResps) error {
 	reqLineParts := bytes.Fields(line)
 	if len(reqLineParts) != 3 {
-		return fmt.Errorf("%w - response status line", MalformedReqErr)
+		return fmt.Errorf("%w - response status line", BadRequestErr)
 	}
 
 	method := string(reqLineParts[0])
@@ -45,15 +43,6 @@ func (r *ReqMetadata) ParseRequestLine(line []byte, routes endpoints.Routes, end
 
 	if !slices.Contains(endpoints.SupportedMethods, method) {
 		return fmt.Errorf("%w - response status line", MethodNotSupportedErr)
-	}
-
-	if _, ok := routes[path]; !ok {
-		return fmt.Errorf("%w", NotFoundErr)
-	}
-
-	endpoint := method + path
-	if _, ok := endpointResps[endpoint]; !ok {
-		return fmt.Errorf("%w", MethodNotAllowedErr)
 	}
 
 	r.Method = method
@@ -76,12 +65,12 @@ func (r *ReqMetadata) ParseHeaders(line []byte) error {
 
 	if bytes.EqualFold(key, []byte("Content-Length")) {
 		if r.ContentLength.isSet {
-			return fmt.Errorf("%v: multiple Content-Length headers in the request", MalformedReqErr)
+			return fmt.Errorf("%v: multiple Content-Length headers in the request", BadRequestErr)
 		}
 
 		contentLength, err := strconv.ParseUint(string(value), 10, 64)
 		if err != nil {
-			return fmt.Errorf("%w: %w: %v", MalformedReqErr, ContentLengthErr, err)
+			return fmt.Errorf("%w: %w: %v", BadRequestErr, ContentLengthErr, err)
 		}
 		r.ContentLength.Value = contentLength
 		r.ContentLength.isSet = true

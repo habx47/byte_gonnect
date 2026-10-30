@@ -154,42 +154,6 @@ func TestRequestLine(t *testing.T) {
 			t.Errorf("got: %v, want: %v", err, MethodNotSupportedErr)
 		}
 	})
-
-	t.Run("invalid route", func(t *testing.T) {
-		var stubMetadata ReqMetadata
-		stubRoutes := map[string]bool{"/": true}
-		stubEndpointResps := map[string][]byte{
-			"GET/": endpoints.GETRsp_root,
-		}
-		line := []byte("GET /hello HTTP/1.1")
-
-		err := stubMetadata.ParseRequestLine(line, stubRoutes, stubEndpointResps)
-		if err == nil {
-			t.Fatalf("expected an err but got nil")
-		}
-
-		if !errors.Is(err, NotFoundErr) {
-			t.Errorf("got: %v, want: %v", err, NotFoundErr)
-		}
-	})
-
-	t.Run("method not allowed", func(t *testing.T) {
-		var stubMetadata ReqMetadata
-		stubRoutes := map[string]bool{"/": true}
-		stubEndpointResps := map[string][]byte{
-			"GET/": endpoints.GETRsp_root,
-		}
-		line := []byte("POST / HTTP/1.1")
-
-		err := stubMetadata.ParseRequestLine(line, stubRoutes, stubEndpointResps)
-		if err == nil {
-			t.Fatalf("expected an err but got nil")
-		}
-
-		if !errors.Is(err, MethodNotAllowedErr) {
-			t.Errorf("got: %v, want: %v", err, MethodNotAllowedErr)
-		}
-	})
 }
 
 func TestParseHeaders(t *testing.T) {

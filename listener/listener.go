@@ -87,22 +87,11 @@ func handleConn(conn net.Conn, logger Logger, routes endpoints.Routes, endpointR
 
 			reqLineErr := reqMetadata.ParseRequestLine(line, routes, endpointResps)
 			if reqLineErr != nil {
-				var response []byte
-
-				switch {
-				case errors.Is(reqLineErr, parser.NotFoundErr):
-					response = endpoints.Rsp_NotFound
-				case errors.Is(reqLineErr, parser.MethodNotAllowedErr):
-					response = endpoints.Rsp_MethodNotAllowed
-				default:
-					response = endpoints.Rsp_BadRequest
-				}
-
-				_, err := conn.Write(response)
+				_, err := conn.Write(endpoints.Rsp_BadRequest)
 				if err != nil {
 					logger.Printf("failed to write to client: %v", err)
-					logger.Printf("failed to parse the request: %v", reqLineErr)
 				}
+				logger.Printf("failed to parse the request: %v", reqLineErr)
 				return
 			}
 			state = stateHeaders

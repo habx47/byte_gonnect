@@ -7,12 +7,11 @@ import (
 	"net"
 	"testing"
 
+	"github.com/habx47/byte_gonnect/endpoints"
 	"github.com/habx47/byte_gonnect/parser"
 )
 
 const ServerWriteErr = "server write error"
-
-var Rsp_root = []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 25\r\nConnection: close\r\n\r\nHello, from the root page")
 
 type WriteErrConn struct {
 	net.Conn
@@ -26,10 +25,56 @@ func (w *WriteErrConn) Write(b []byte) (n int, err error) {
 	return w.Conn.Write(b)
 }
 
+func TestRouter(t *testing.T) {
+	t.Run("not found error", func(t *testing.T) {
+		stubReqMetadata := parser.ReqMetadata{Method: "GET", Path: "/hello"}
+		stubRoutes := endpoints.Routes{"/": true}
+		stubEndpointResps := endpoints.EndpointResps{"GET/": endpoints.GETRsp_root}
+		serverSide, clientSide := net.Pipe()
+		defer clientSide.Close()
+
+		go func() {
+			Router(serverSide, stubReqMetadata, stubRoutes, stubEndpointResps)
+			serverSide.Close()
+		}()
+
+		response, err := io.ReadAll(clientSide)
+		if err != nil {
+			t.Fatalf("failed to read from server %v", err)
+		}
+
+		if !bytes.Equal(response, endpoints.Rsp_NotFound) {
+			t.Errorf("got: %s\n, want: %s", response, endpoints.Rsp_NotFound)
+		}
+	})
+
+	t.Run("method not allowed", func(t *testing.T) {
+		stubReqMetadata := parser.ReqMetadata{Method: "POST", Path: "/"}
+		stubRoutes := endpoints.Routes{"/": true}
+		stubEndpointResps := endpoints.EndpointResps{"GET/": endpoints.GETRsp_root}
+		serverSide, clientSide := net.Pipe()
+		defer clientSide.Close()
+
+		go func() {
+			Router(serverSide, stubReqMetadata, stubRoutes, stubEndpointResps)
+			serverSide.Close()
+		}()
+
+		response, err := io.ReadAll(clientSide)
+		if err != nil {
+			t.Fatalf("failed to read from server: %v", err)
+		}
+
+		if !bytes.Equal(response, endpoints.Rsp_MethodNotAllowed) {
+			t.Errorf("got: %s\n, want: %s", response, endpoints.Rsp_MethodNotAllowed)
+		}
+	})
+}
+
 func TestGETReqHandling(t *testing.T) {
 	t.Run("success on write to conn on path: /", func(t *testing.T) {
 		stubReqMetadata := parser.ReqMetadata{Method: "GET", Path: "/"}
-		stubEndpointResps := EndpointResps{"GET/": Rsp_root}
+		stubEndpointResps := endpoints.EndpointResps{"GET/": endpoints.GETRsp_root}
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
 
@@ -43,8 +88,8 @@ func TestGETReqHandling(t *testing.T) {
 			t.Fatalf("expected no error, but got %v", err)
 		}
 
-		if !bytes.Equal(response, Rsp_root) {
-			t.Errorf("got: %s,\n want: %s", response, Rsp_root)
+		if !bytes.Equal(response, endpoints.GETRsp_root) {
+			t.Errorf("got: %s,\n want: %s", response, endpoints.GETRsp_root)
 		}
 
 		clientSide.Close()
@@ -52,7 +97,7 @@ func TestGETReqHandling(t *testing.T) {
 
 	t.Run("error on write", func(t *testing.T) {
 		stubReqMetadata := parser.ReqMetadata{Method: "GET", Path: "/"}
-		stubEndpointResps := EndpointResps{"GET/": Rsp_root}
+		stubEndpointResps := endpoints.EndpointResps{"GET/": endpoints.GETRsp_root}
 		serverSide, _ := net.Pipe()
 		defer serverSide.Close()
 		faultyConn := WriteErrConn{
@@ -75,7 +120,7 @@ func TestGETReqHandling(t *testing.T) {
 func TestPOSTReqHandling(t *testing.T) {
 	t.Run("success on write to conn", func(t *testing.T) {
 		stubReqMetadata := parser.ReqMetadata{Method: "POST", Path: "/"}
-		stubEndpointResps := EndpointResps{"POST/": Rsp_root}
+		stubEndpointResps := endpoints.EndpointResps{"POST/": endpoints.GETRsp_root}
 		serverSide, clientSide := net.Pipe()
 		defer clientSide.Close()
 
@@ -89,14 +134,14 @@ func TestPOSTReqHandling(t *testing.T) {
 			t.Fatalf("expected no error, but got: %v", err)
 		}
 
-		if !bytes.Equal(response, Rsp_root) {
-			t.Errorf("got: %s,\n want: %s", response, Rsp_root)
+		if !bytes.Equal(response, endpoints.GETRsp_root) {
+			t.Errorf("got: %s,\n want: %s", response, endpoints.GETRsp_root)
 		}
 	})
 
 	t.Run("error on write", func(t *testing.T) {
 		stubReqMetadata := parser.ReqMetadata{Method: "POST", Path: "/"}
-		stubEndpointResps := EndpointResps{"POST/": Rsp_root}
+		stubEndpointResps := endpoints.EndpointResps{"POST/": endpoints.GETRsp_root}
 		serverSide, _ := net.Pipe()
 		defer serverSide.Close()
 
