@@ -14,6 +14,23 @@ var MethodHandlingErr = errors.New("registered method handling not implemented")
 
 func Router(conn net.Conn, reqMetadata parser.ReqMetadata, routes endpoints.Routes, endpointResps endpoints.EndpointResps) error {
 
+	if _, ok := routes[reqMetadata.Path]; !ok {
+		_, err := conn.Write(endpoints.Rsp_NotFound)
+		if err != nil {
+			return fmt.Errorf("%w: %v", ConnWriteErr, err)
+		}
+		return nil
+	}
+
+	endpoint := reqMetadata.Method + reqMetadata.Path
+	if _, ok := endpointResps[endpoint]; !ok {
+		_, err := conn.Write(endpoints.Rsp_MethodNotAllowed)
+		if err != nil {
+			return fmt.Errorf("%w: %v", ConnWriteErr, err)
+		}
+		return nil
+	}
+
 	switch reqMetadata.Method {
 	case "GET":
 		err := handleGETReq(conn, reqMetadata, endpointResps)
