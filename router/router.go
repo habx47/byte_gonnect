@@ -9,6 +9,7 @@ import (
 )
 
 var ConnWriteErr = errors.New("failed to write to conn")
+var MethodHandlingErr = errors.New("missing valid method handling")
 
 type Routes map[string]bool
 type EndpointResps map[string][]byte
@@ -46,6 +47,8 @@ func Router(conn net.Conn, reqMetadata parser.ReqMetadata, routes Routes, endpoi
 		if err != nil {
 			return err
 		}
+	default:
+		return fmt.Errorf("%v", MethodHandlingErr)
 	}
 	return nil
 }
