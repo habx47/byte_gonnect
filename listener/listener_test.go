@@ -11,7 +11,6 @@ import (
 	"testing/iotest"
 
 	"github.com/habx47/byte_gonnect/endpoints"
-	"github.com/habx47/byte_gonnect/parser"
 )
 
 type ReadErrConn struct {
@@ -155,28 +154,20 @@ func TestHandleConn(t *testing.T) {
 		var logBuffer bytes.Buffer
 		logger := log.New(&logBuffer, "", 0)
 
-		done := make(chan struct{})
-
-		go func() {
-			handleConn(serverSide, logger, stubRoutes, stubEndpointResps)
-			close(done)
-		}()
+		go handleConn(serverSide, logger, stubRoutes, stubEndpointResps)
 
 		_, err := clientSide.Write([]byte(request))
 		if err != nil {
 			t.Fatalf("failed to write to server: %v", err)
 		}
 
-		<-done
-
-		got := logBuffer.String()
-
-		if !strings.Contains(got, "failed to parse request") {
-			t.Errorf("expected reqLineErr branch to execute, but got :\n%s", got)
+		response, err := io.ReadAll(clientSide)
+		if err != nil {
+			t.Fatalf("cannot read from the server: %v", err)
 		}
 
-		if !strings.Contains(got, parser.MalformedReqErr.Error()) {
-			t.Errorf("expected log to contain %q, but got :\n%s", parser.MalformedReqErr, got)
+		if !bytes.Equal(response, endpoints.Rsp_BadRequest) {
+			t.Errorf("got: %s, want: %s", response, endpoints.Rsp_BadRequest)
 		}
 
 		clientSide.Close()
@@ -195,30 +186,21 @@ func TestHandleConn(t *testing.T) {
 		var logBuffer bytes.Buffer
 		logger := log.New(&logBuffer, "", 0)
 
-		done := make(chan struct{})
-
-		go func() {
-			handleConn(serverSide, logger, stubRoutes, stubEndpointResps)
-			close(done)
-		}()
+		go handleConn(serverSide, logger, stubRoutes, stubEndpointResps)
 
 		_, err := clientSide.Write([]byte(request))
 		if err != nil {
 			t.Fatalf("failed to write to server: %v", err)
 		}
 
-		<-done
-
-		got := logBuffer.String()
-
-		if !strings.Contains(got, "failed to parse request") {
-			t.Errorf("expected parseHeadersErr branch to execute, but got :\n%s", got)
+		response, err := io.ReadAll(clientSide)
+		if err != nil {
+			t.Fatalf("cannot read from the server: %v", err)
 		}
 
-		if !strings.Contains(got, parser.ContentLengthErr.Error()) {
-			t.Errorf("expected log to contain %q, but got :\n%s", parser.ContentLengthErr, got)
+		if !bytes.Equal(response, endpoints.Rsp_BadRequest) {
+			t.Errorf("got: %s, want: %s", response, endpoints.Rsp_BadRequest)
 		}
-
 		clientSide.Close()
 	})
 
@@ -246,13 +228,12 @@ func TestHandleConn(t *testing.T) {
 			t.Fatalf("failed to read response from server: %v", err)
 		}
 
-		if !bytes.Equal(response, []byte("HTTP/1.1 414 URI too long\r\n\r\n")) {
+		if !bytes.Equal(response, []byte("HTTP/1.1 414 URI too long\r\nConnection: close\r\n\r\n")) {
 			t.Errorf("got: %s,\n want: %v", response, "HTTP/1.1 414 URI too long\r\n\r\n")
 		}
 
 		clientSide.Close()
 	})
-
 }
 
 func TestCreateRoutes(t *testing.T) {
