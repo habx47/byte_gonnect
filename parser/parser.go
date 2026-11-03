@@ -26,6 +26,7 @@ var ContentLengthErr = errors.New("cannot parse content-length header")
 var MalformedHeaderErr = errors.New("malformed header")
 var EmptyHeaderK_VErr = errors.New("header key or value is empty")
 var WhitespaceErr = errors.New("extra whitespace in header key")
+var InvalidToken = errors.New("invlid token in header key")
 var HTTPVersionErr = errors.New("unsupported http version")
 var MethodNotSupportedErr = errors.New("method not currently supported")
 
@@ -67,6 +68,12 @@ func (r *ReqMetadata) ParseHeaders(line []byte) error {
 
 	if bytes.ContainsAny(key, " ") {
 		return fmt.Errorf("%w %w", MalformedHeaderErr, WhitespaceErr)
+	}
+
+	for i := range key {
+		if !endpoints.ValidTokenChars[key[i]] {
+			return fmt.Errorf("%w %w", MalformedHeaderErr, InvalidToken)
+		}
 	}
 
 	if bytes.EqualFold(key, []byte("Content-Length")) {

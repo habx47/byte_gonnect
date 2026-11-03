@@ -177,6 +177,20 @@ func TestParseHeaders(t *testing.T) {
 		}
 	})
 
+	t.Run("invlid token in header key", func(t *testing.T) {
+		var stubMetadata ReqMetadata
+		line := []byte("@Hostname: localhost")
+		err := stubMetadata.ParseHeaders(line)
+
+		if err == nil {
+			t.Fatalf("expected an err: %v, but got nil", InvalidToken)
+		}
+
+		if !errors.Is(err, InvalidToken) {
+			t.Errorf("got: %v, want: %v", err, InvalidToken)
+		}
+	})
+
 	t.Run("valid field", func(t *testing.T) {
 		var stubMetadata ReqMetadata
 
