@@ -106,7 +106,10 @@ func handleConn(conn net.Conn, logger Logger, routes endpoints.Routes, endpointR
 			}
 			parseHeadersErr := reqMetadata.ParseHeaders(line)
 			if parseHeadersErr != nil {
-				conn.Write(endpoints.Rsp_BadRequest)
+				_, err := conn.Write(endpoints.Rsp_BadRequest)
+				if err != nil {
+					logger.Printf("failed to write to conn: %v", err)
+				}
 				logger.Printf("failed to parse request: %v", parseHeadersErr)
 				return
 			}

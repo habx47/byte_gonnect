@@ -63,7 +63,7 @@ func (r *ReqMetadata) ParseHeaders(line []byte) error {
 	}
 	value = bytes.TrimSpace(value)
 
-	if len(bytes.TrimSpace(key)) == 0 || len(value) == 0 {
+	if len(bytes.TrimSpace(key)) == 0 {
 		return fmt.Errorf("%w %w", MalformedHeaderErr, EmptyHeaderK_VErr)
 	}
 
@@ -83,9 +83,19 @@ func (r *ReqMetadata) ParseHeaders(line []byte) error {
 		}
 	}
 
-	if bytes.EqualFold(key, []byte("Content-Length")) {
+	if bytes.EqualFold(key, []byte("Content-Length")) && len(value) != 0 {
 		if r.ContentLength.isSet {
 			return fmt.Errorf("%v: multiple Content-Length headers in the request", BadRequestErr)
+		}
+
+		if len(value) > 20 {
+			return fmt.Errorf("%w: content-length value overflow", ContentLengthErr)
+		}
+
+		for i := range value {
+			if value[i] < '0' || value[i] > '9' {
+				return fmt.Errorf("%w %w", ContentLengthErr, InvalidHeaderValueToken)
+			}
 		}
 
 		contentLength, err := strconv.ParseUint(string(value), 10, 64)
@@ -95,6 +105,8 @@ func (r *ReqMetadata) ParseHeaders(line []byte) error {
 		r.ContentLength.Value = contentLength
 		r.ContentLength.isSet = true
 
+	} else {
+		return fmt.Errorf("%w %w", ContentLengthErr, EmptyHeaderK_VErr)
 	}
 	return nil
 }

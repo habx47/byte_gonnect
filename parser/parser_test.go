@@ -135,20 +135,6 @@ func TestRequestLine(t *testing.T) {
 }
 
 func TestParseHeaders(t *testing.T) {
-	t.Run("empty header value", func(t *testing.T) {
-		var stubMetadata ReqMetadata
-		line := []byte("Host: ")
-		err := stubMetadata.ParseHeaders(line)
-
-		if err == nil {
-			t.Fatalf("expected an err: %v, but got nil", EmptyHeaderK_VErr)
-		}
-
-		if !errors.Is(err, EmptyHeaderK_VErr) {
-			t.Errorf("got: %v, want: %v", err, EmptyHeaderK_VErr)
-		}
-	})
-
 	t.Run("empty header key", func(t *testing.T) {
 		var stubMetadata ReqMetadata
 		line := []byte(" : localhost")
@@ -224,6 +210,48 @@ func TestParseHeaders(t *testing.T) {
 	t.Run("invalid field", func(t *testing.T) {
 		var stubMetadata ReqMetadata
 		line := []byte("Content-Length: abc")
+
+		err := stubMetadata.ParseHeaders(line)
+		if err == nil {
+			t.Fatalf("expected error: %v, but got nil", ContentLengthErr)
+		}
+
+		if !errors.Is(err, ContentLengthErr) {
+			t.Errorf("got %v, want %v", err, ContentLengthErr)
+		}
+	})
+
+	t.Run("empty field for content-length", func(t *testing.T) {
+		var stubMetadata ReqMetadata
+		line := []byte("Content-Length: ")
+
+		err := stubMetadata.ParseHeaders(line)
+		if err == nil {
+			t.Fatalf("expected error: %v, but got nil", EmptyHeaderK_VErr)
+		}
+
+		if !errors.Is(err, EmptyHeaderK_VErr) {
+			t.Errorf("got %v, want %v", err, EmptyHeaderK_VErr)
+		}
+	})
+
+	t.Run("invalid content-length character", func(t *testing.T) {
+		var stubMetadata ReqMetadata
+		line := []byte("Content-Length: +10")
+
+		err := stubMetadata.ParseHeaders(line)
+		if err == nil {
+			t.Fatalf("expected error: %v, but got nil", InvalidHeaderValueToken)
+		}
+
+		if !errors.Is(err, InvalidHeaderValueToken) {
+			t.Errorf("got %v, want %v", err, InvalidHeaderValueToken)
+		}
+	})
+
+	t.Run("overflow content-length number", func(t *testing.T) {
+		var stubMetadata ReqMetadata
+		line := []byte("Content-Length: 102323535346654645643535356666656464564647394579347593475347")
 
 		err := stubMetadata.ParseHeaders(line)
 		if err == nil {
