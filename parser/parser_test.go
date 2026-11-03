@@ -262,4 +262,31 @@ func TestParseHeaders(t *testing.T) {
 			t.Errorf("got %v, want %v", err, ContentLengthErr)
 		}
 	})
+
+	t.Run("duplicate content-length", func(t *testing.T) {
+		var stubMetadata ReqMetadata
+		line := []byte("Content-Length: 10")
+		duplicate := []byte("Content-Length: 20")
+
+		err := stubMetadata.ParseHeaders(line)
+		if err != nil {
+			t.Fatalf("expected no error but got: %v", err)
+		}
+
+		duplicateErr := stubMetadata.ParseHeaders(duplicate)
+		if duplicateErr == nil {
+			t.Fatalf("expected error: %v, but got nil", BadRequestErr)
+		}
+
+		got := stubMetadata.ContentLength.Value
+		want := uint64(10)
+
+		if got != want {
+			t.Errorf("got: %v, want: %v", got, want)
+		}
+
+		if !errors.Is(duplicateErr, BadRequestErr) {
+			t.Errorf("got %v, want %v", err, BadRequestErr)
+		}
+	})
 }

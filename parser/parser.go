@@ -85,7 +85,7 @@ func (r *ReqMetadata) ParseHeaders(line []byte) error {
 
 	if bytes.EqualFold(key, []byte("Content-Length")) && len(value) != 0 {
 		if r.ContentLength.isSet {
-			return fmt.Errorf("%v: multiple Content-Length headers in the request", BadRequestErr)
+			return fmt.Errorf("%w: multiple Content-Length headers in the request", BadRequestErr)
 		}
 
 		if len(value) > 20 {
@@ -105,7 +105,7 @@ func (r *ReqMetadata) ParseHeaders(line []byte) error {
 		r.ContentLength.Value = contentLength
 		r.ContentLength.isSet = true
 
-	} else {
+	} else if bytes.EqualFold(key, []byte("Content-Length")) && len(value) == 0 {
 		return fmt.Errorf("%w %w", ContentLengthErr, EmptyHeaderK_VErr)
 	}
 	return nil
