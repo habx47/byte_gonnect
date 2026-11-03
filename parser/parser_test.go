@@ -147,7 +147,6 @@ func TestParseHeaders(t *testing.T) {
 		if !errors.Is(err, EmptyHeaderK_VErr) {
 			t.Errorf("got: %v, want: %v", err, EmptyHeaderK_VErr)
 		}
-
 	})
 
 	t.Run("empty header key", func(t *testing.T) {
@@ -162,7 +161,20 @@ func TestParseHeaders(t *testing.T) {
 		if !errors.Is(err, EmptyHeaderK_VErr) {
 			t.Errorf("got: %v, want: %v", err, EmptyHeaderK_VErr)
 		}
+	})
 
+	t.Run("whitespace in header key", func(t *testing.T) {
+		var stubMetadata ReqMetadata
+		line := []byte("Hostname : localhost")
+		err := stubMetadata.ParseHeaders(line)
+
+		if err == nil {
+			t.Fatalf("expected an err: %v, but got nil", WhitespaceErr)
+		}
+
+		if !errors.Is(err, WhitespaceErr) {
+			t.Errorf("got: %v, want: %v", err, WhitespaceErr)
+		}
 	})
 
 	t.Run("valid field", func(t *testing.T) {

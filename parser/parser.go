@@ -64,7 +64,8 @@ func (r *ReqMetadata) ParseHeaders(line []byte) error {
 	if len(bytes.TrimSpace(key)) == 0 || len(value) == 0 {
 		return fmt.Errorf("%w %w", MalformedHeaderErr, EmptyHeaderK_VErr)
 	}
-	if key[len(key)-1] == ' ' {
+
+	if bytes.ContainsAny(key, " ") {
 		return fmt.Errorf("%w %w", MalformedHeaderErr, WhitespaceErr)
 	}
 
