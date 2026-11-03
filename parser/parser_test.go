@@ -177,17 +177,31 @@ func TestParseHeaders(t *testing.T) {
 		}
 	})
 
-	t.Run("invlid token in header key", func(t *testing.T) {
+	t.Run("invalid token in header key", func(t *testing.T) {
 		var stubMetadata ReqMetadata
 		line := []byte("@Hostname: localhost")
 		err := stubMetadata.ParseHeaders(line)
 
 		if err == nil {
-			t.Fatalf("expected an err: %v, but got nil", InvalidToken)
+			t.Fatalf("expected an err: %v, but got nil", InvalidHeaderKeyToken)
 		}
 
-		if !errors.Is(err, InvalidToken) {
-			t.Errorf("got: %v, want: %v", err, InvalidToken)
+		if !errors.Is(err, InvalidHeaderKeyToken) {
+			t.Errorf("got: %v, want: %v", err, InvalidHeaderKeyToken)
+		}
+	})
+
+	t.Run("invalid token in header value", func(t *testing.T) {
+		var stubMetadata ReqMetadata
+		line := []byte("Hostname: \x7Flocalhost")
+		err := stubMetadata.ParseHeaders(line)
+
+		if err == nil {
+			t.Fatalf("expected an err: %v, but got nil", InvalidHeaderValueToken)
+		}
+
+		if !errors.Is(err, InvalidHeaderValueToken) {
+			t.Errorf("got: %v, want: %v", err, InvalidHeaderValueToken)
 		}
 	})
 
