@@ -24,6 +24,8 @@ type ReqMetadata struct {
 var BadRequestErr = errors.New("bad request")
 var ContentLengthErr = errors.New("cannot parse content-length header")
 var MalformedHeaderErr = errors.New("malformed header")
+var EmptyHeaderK_VErr = errors.New("header key or value is empty")
+var WhitespaceErr = errors.New("extra whitespace in header key")
 var HTTPVersionErr = errors.New("unsupported http version")
 var MethodNotSupportedErr = errors.New("method not currently supported")
 
@@ -57,10 +59,13 @@ func (r *ReqMetadata) ParseHeaders(line []byte) error {
 	if !found {
 		return fmt.Errorf("%w", MalformedHeaderErr)
 	}
+	value = bytes.TrimSpace(value)
 
-	if found {
-		key = bytes.TrimSpace(key)
-		value = bytes.TrimSpace(value)
+	if len(bytes.TrimSpace(key)) == 0 || len(value) == 0 {
+		return fmt.Errorf("%w %w", MalformedHeaderErr, EmptyHeaderK_VErr)
+	}
+	if key[len(key)-1] == ' ' {
+		return fmt.Errorf("%w %w", MalformedHeaderErr, WhitespaceErr)
 	}
 
 	if bytes.EqualFold(key, []byte("Content-Length")) {
