@@ -265,6 +265,37 @@ func TestHandleConn(t *testing.T) {
 
 		clientSide.Close()
 	})
+
+	t.Run("fewer bytes send, conn closed", func(t *testing.T) {
+		request := []byte("GET / HTTP/1.1\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello")
+		stubRoutes := map[string]bool{"/": true}
+		stubEndpointResps := map[string][]byte{
+			"GET/": endpoints.GETRsp_root,
+		}
+		serverSide, clientSide := net.Pipe()
+		defer clientSide.Close()
+
+		var logBuffer bytes.Buffer
+		logger := log.New(&logBuffer, "", 0)
+		done := make(chan struct{})
+
+		go func() {
+			handleConn(serverSide, logger, stubRoutes, stubEndpointResps)
+			close(done)
+		}()
+
+		clientSide.Write([]byte(request))
+		clientSide.Close()
+
+		<-done
+
+		got := logBuffer.String()
+		want := "failed to read from conn"
+
+		if !strings.Contains(got, want) {
+			t.Errorf("expected log to contain %q, but got: \n%s", want, got)
+		}
+	})
 }
 
 func TestCreateRoutes(t *testing.T) {

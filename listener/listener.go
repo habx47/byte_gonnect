@@ -136,10 +136,11 @@ func handleConn(conn net.Conn, logger Logger, routes endpoints.Routes, endpointR
 	_, err := io.ReadFull(reader, body)
 	if err != nil {
 		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, os.ErrDeadlineExceeded) {
-			_, err := conn.Write([]byte("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"))
-			if err != nil {
-				logger.Printf("failed to write to conn: %v", err)
+			_, writeErr := conn.Write([]byte("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"))
+			if writeErr != nil {
+				logger.Printf("failed to write to conn: %v", writeErr)
 			}
+			logger.Printf("failed to read from conn: %v", err)
 		} else {
 			logger.Printf("failed to read request body: %v", err)
 		}
