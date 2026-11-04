@@ -234,6 +234,37 @@ func TestHandleConn(t *testing.T) {
 
 		clientSide.Close()
 	})
+
+	t.Run("fewer bytes send, conn kept open", func(t *testing.T) {
+		request := []byte("GET / HTTP/1.1\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello")
+		stubRoutes := map[string]bool{"/": true}
+		stubEndpointResps := map[string][]byte{
+			"GET/": endpoints.GETRsp_root,
+		}
+		serverSide, clientSide := net.Pipe()
+		defer clientSide.Close()
+
+		var logBuffer bytes.Buffer
+		logger := log.New(&logBuffer, "", 0)
+
+		go handleConn(serverSide, logger, stubRoutes, stubEndpointResps)
+
+		_, err := clientSide.Write([]byte(request))
+		if err != nil {
+			t.Fatalf("failed to write to server: %v", err)
+		}
+
+		response, err := io.ReadAll(clientSide)
+		if err != nil {
+			t.Fatalf("failed to read response from server: %v", err)
+		}
+
+		if !bytes.Equal(response, endpoints.Rsp_BadRequest) {
+			t.Errorf("got: %s,\n want: %s", response, endpoints.Rsp_BadRequest)
+		}
+
+		clientSide.Close()
+	})
 }
 
 func TestCreateRoutes(t *testing.T) {

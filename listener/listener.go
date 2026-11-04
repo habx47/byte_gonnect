@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
 	"github.com/habx47/byte_gonnect/endpoints"
 	"github.com/habx47/byte_gonnect/parser"
@@ -61,6 +62,12 @@ func handleConn(conn net.Conn, logger Logger, routes endpoints.Routes, endpointR
 	defer conn.Close()
 	state := stateRequestLine
 	reqMetadata := parser.ReqMetadata{}
+
+	deadlineErr := conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	if deadlineErr != nil {
+		logger.Printf("error setting read deadine: %v", deadlineErr)
+		return
+	}
 
 	reader := bufio.NewReaderSize(conn, 8192)
 	for {
@@ -128,7 +135,7 @@ func handleConn(conn net.Conn, logger Logger, routes endpoints.Routes, endpointR
 	body := make([]byte, reqMetadata.ContentLength.Value)
 	_, err := io.ReadFull(reader, body)
 	if err != nil {
-		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, os.ErrDeadlineExceeded) {
 			_, err := conn.Write([]byte("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"))
 			if err != nil {
 				logger.Printf("failed to write to conn: %v", err)
