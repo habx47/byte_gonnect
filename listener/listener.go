@@ -27,6 +27,7 @@ const (
 	stateHeaders
 )
 
+const MaxHeaderCount = 100
 const MaxRequestBodySize = 10000
 
 func Listener(port string) {
@@ -68,6 +69,7 @@ func handleConn(conn net.Conn, logger Logger, routes endpoints.Routes, endpointR
 	defer conn.Close()
 	state := stateRequestLine
 	reqMetadata := parser.ReqMetadata{}
+	var headerCount uint8
 
 	deadlineErr := conn.SetReadDeadline(time.Now().Add(10 * time.Second))
 	if deadlineErr != nil {
@@ -77,6 +79,14 @@ func handleConn(conn net.Conn, logger Logger, routes endpoints.Routes, endpointR
 
 	reader := bufio.NewReaderSize(conn, 8192)
 	for {
+		if headerCount > MaxHeaderCount {
+			_, err := conn.Write([]byte("HTTP/1.1 431 Request Header Fields Too Large\r\nConnection: close\r\n\r\n"))
+			if err != nil {
+				logger.Printf("failed to write to client: %v", err)
+			}
+			logger.Printf("failed to parse request: %v", HeaderErr)
+		}
+
 		line, isPrefix, connReadErr := reader.ReadLine()
 		if connReadErr != nil {
 			logger.Printf("client disconnected or error: %v", connReadErr)
@@ -126,6 +136,7 @@ func handleConn(conn net.Conn, logger Logger, routes endpoints.Routes, endpointR
 				logger.Printf("failed to parse request: %v", parseHeadersErr)
 				return
 			}
+			headerCount++
 		}
 	}
 
