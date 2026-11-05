@@ -50,7 +50,14 @@ func Listener(port string) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			logger.Printf("failed to accept a connection: %v", err)
+			var opErr *net.OpError
+			if errors.As(err, &opErr) {
+				if errors.Is(opErr.Err, net.ErrClosed) {
+					logger.Printf("failed to accept a connection, shutting down: %v", err)
+					return
+				}
+			}
+			logger.Printf("failed to accept a connection, retrying: %v", err)
 			continue
 		}
 
