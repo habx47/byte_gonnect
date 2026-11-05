@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"syscall"
 	"time"
 
 	"github.com/habx47/byte_gonnect/endpoints"
@@ -50,15 +51,13 @@ func Listener(port string) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			var opErr *net.OpError
-			if errors.As(err, &opErr) {
-				if errors.Is(opErr.Err, net.ErrClosed) {
-					logger.Printf("failed to accept a connection, shutting down: %v", err)
-					return
-				}
+			if errors.Is(err, syscall.EMFILE) || errors.Is(err, syscall.ENFILE) {
+				logger.Printf("failed to accept a connection, resource exhaused. Retrying in 10ms: %v", err)
+				time.Sleep(10 * time.Millisecond)
+				continue
 			}
-			logger.Printf("failed to accept a connection, retrying: %v", err)
-			continue
+			logger.Printf("failed to accept a connection, shutting down: %v", err)
+			return
 		}
 
 		go handleConn(conn, logger, routes, endpointResps)
