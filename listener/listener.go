@@ -85,6 +85,7 @@ func handleConn(conn net.Conn, logger Logger, routes endpoints.Routes, endpointR
 				logger.Printf("failed to write to client: %v", err)
 			}
 			logger.Printf("failed to parse request: %v", HeaderErr)
+			return
 		}
 
 		line, isPrefix, connReadErr := reader.ReadLine()
